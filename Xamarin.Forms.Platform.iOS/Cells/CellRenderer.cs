@@ -1,13 +1,6 @@
 using System;
-using Xamarin.Forms.Internals;
-#if __UNIFIED__
 using UIKit;
-using Foundation;
-
-#else
-using MonoTouch.UIKit;
-using MonoTouch.Foundation;
-#endif
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -55,9 +48,9 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			cell.ForceUpdateSizeRequested -= _onForceUpdateSizeRequested;
 
-			_onForceUpdateSizeRequested = (sender, e) => 
+			_onForceUpdateSizeRequested = (sender, e) =>
 			{
-				var index = tableView.IndexPathForCell(nativeCell);
+				var index = tableView?.IndexPathForCell(nativeCell) ?? (sender as Cell)?.GetIndexPath();
 				if (index != null)
 					tableView.ReloadRows(new[] { index }, UITableViewRowAnimation.None);
 			};

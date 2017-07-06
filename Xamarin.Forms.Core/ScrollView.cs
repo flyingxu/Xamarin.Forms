@@ -1,12 +1,14 @@
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
+using Xamarin.Forms.Internals;
 using Xamarin.Forms.Platform;
 
 namespace Xamarin.Forms
 {
 	[ContentProperty("Content")]
 	[RenderWith(typeof(_ScrollViewRenderer))]
-	public class ScrollView : Layout, IScrollViewController
+	public class ScrollView : Layout, IScrollViewController, IElementConfiguration<ScrollView>
 	{
 		public static readonly BindableProperty OrientationProperty = BindableProperty.Create("Orientation", typeof(ScrollOrientation), typeof(ScrollView), ScrollOrientation.Vertical);
 
@@ -21,6 +23,8 @@ namespace Xamarin.Forms
 		static readonly BindablePropertyKey ContentSizePropertyKey = BindableProperty.CreateReadOnly("ContentSize", typeof(Size), typeof(ScrollView), default(Size));
 
 		public static readonly BindableProperty ContentSizeProperty = ContentSizePropertyKey.BindableProperty;
+
+		readonly Lazy<PlatformConfigurationRegistry<ScrollView>> _platformConfigurationRegistry;
 
 		View _content;
 
@@ -68,7 +72,13 @@ namespace Xamarin.Forms
 			private set { SetValue(ScrollYPropertyKey, value); }
 		}
 
-		Point IScrollViewController.GetScrollPositionForElement(VisualElement item, ScrollToPosition pos)
+		public ScrollView()
+		{
+			_platformConfigurationRegistry = new Lazy<PlatformConfigurationRegistry<ScrollView>>(() => new PlatformConfigurationRegistry<ScrollView>(this));
+		}
+
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public Point GetScrollPositionForElement(VisualElement item, ScrollToPosition pos)
 		{
 			ScrollToPosition position = pos;
 			double y = GetCoordinate(item, "Y", 0);
@@ -106,19 +116,15 @@ namespace Xamarin.Forms
 			return new Point(x, y);
 		}
 
-		event EventHandler<ScrollToRequestedEventArgs> IScrollViewController.ScrollToRequested
-		{
-			add { ScrollToRequested += value; }
-			remove { ScrollToRequested -= value; }
-		}
-
-		void IScrollViewController.SendScrollFinished()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SendScrollFinished()
 		{
 			if (_scrollCompletionSource != null)
 				_scrollCompletionSource.TrySetResult(true);
 		}
 
-		void IScrollViewController.SetScrolledPosition(double x, double y)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SetScrolledPosition(double x, double y)
 		{
 			if (ScrollX == x && ScrollY == y)
 				return;
@@ -132,6 +138,11 @@ namespace Xamarin.Forms
 		}
 
 		public event EventHandler<ScrolledEventArgs> Scrolled;
+
+		public IPlatformElementConfiguration<T, ScrollView> On<T>() where T : IConfigPlatform
+		{
+			return _platformConfigurationRegistry.Value.On<T>();
+		}
 
 		public Task ScrollToAsync(double x, double y, bool animated)
 		{
@@ -182,7 +193,7 @@ namespace Xamarin.Forms
 			}
 		}
 
-		[Obsolete("Use OnMeasure")]
+		[Obsolete("OnSizeRequest is obsolete as of version 2.2.0. Please use OnMeasure instead.")]
 		protected override SizeRequest OnSizeRequest(double widthConstraint, double heightConstraint)
 		{
 			if (Content == null)
@@ -256,7 +267,7 @@ namespace Xamarin.Forms
 
 		double GetMaxHeight(double height)
 		{
-			return Math.Max(height, _content.Bounds.Bottom + Padding.Bottom);
+			return Math.Max(height, _content.Bounds.Top + Padding.Top + _content.Bounds.Bottom + Padding.Bottom);
 		}
 
 		static double GetMaxHeight(double height, SizeRequest size)
@@ -266,7 +277,7 @@ namespace Xamarin.Forms
 
 		double GetMaxWidth(double width)
 		{
-			return Math.Max(width, _content.Bounds.Right + Padding.Right);
+			return Math.Max(width, _content.Bounds.Left + Padding.Left + _content.Bounds.Right + Padding.Right);
 		}
 
 		static double GetMaxWidth(double width, SizeRequest size)
@@ -282,6 +293,7 @@ namespace Xamarin.Forms
 				handler(this, e);
 		}
 
-		event EventHandler<ScrollToRequestedEventArgs> ScrollToRequested;
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public event EventHandler<ScrollToRequestedEventArgs> ScrollToRequested;
 	}
 }

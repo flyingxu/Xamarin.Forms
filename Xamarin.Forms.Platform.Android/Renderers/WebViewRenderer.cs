@@ -12,6 +12,8 @@ namespace Xamarin.Forms.Platform.Android
 		bool _ignoreSourceChanges;
 		FormsWebChromeClient _webChromeClient;
 
+		IWebViewController ElementController => Element;
+
 		public WebViewRenderer()
 		{
 			AutoPackage = false;
@@ -35,9 +37,9 @@ namespace Xamarin.Forms.Platform.Android
 				{
 					if (Control != null)
 						Control.StopLoading();
-					Element.EvalRequested -= OnEvalRequested;
-					Element.GoBackRequested -= OnGoBackRequested;
-					Element.GoForwardRequested -= OnGoForwardRequested;
+					ElementController.EvalRequested -= OnEvalRequested;
+					ElementController.GoBackRequested -= OnGoBackRequested;
+					ElementController.GoForwardRequested -= OnGoForwardRequested;
 
 					_webChromeClient?.Dispose();
 				}
@@ -56,13 +58,18 @@ namespace Xamarin.Forms.Platform.Android
 			return new Size(Context.ToPixels(40), Context.ToPixels(40));
 		}
 
+		protected override AWebView CreateNativeControl()
+		{
+			return new AWebView(Context);
+		}
+
 		protected override void OnElementChanged(ElementChangedEventArgs<WebView> e)
 		{
 			base.OnElementChanged(e);
 
 			if (Control == null)
 			{
-				var webView = new AWebView(Context);
+				var webView = CreateNativeControl();
 #pragma warning disable 618 // This can probably be replaced with LinearLayout(LayoutParams.MatchParent, LayoutParams.MatchParent); just need to test that theory
 				webView.LayoutParameters = new global::Android.Widget.AbsoluteLayout.LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent, 0, 0);
 #pragma warning restore 618
@@ -79,16 +86,18 @@ namespace Xamarin.Forms.Platform.Android
 
 			if (e.OldElement != null)
 			{
-				e.OldElement.EvalRequested -= OnEvalRequested;
-				e.OldElement.GoBackRequested -= OnGoBackRequested;
-				e.OldElement.GoForwardRequested -= OnGoForwardRequested;
+				var oldElementController = e.OldElement as IWebViewController;
+				oldElementController.EvalRequested -= OnEvalRequested;
+				oldElementController.GoBackRequested -= OnGoBackRequested;
+				oldElementController.GoForwardRequested -= OnGoForwardRequested;
 			}
 
 			if (e.NewElement != null)
 			{
-				e.NewElement.EvalRequested += OnEvalRequested;
-				e.NewElement.GoBackRequested += OnGoBackRequested;
-				e.NewElement.GoForwardRequested += OnGoForwardRequested;
+				var newElementController = e.NewElement as IWebViewController;
+				newElementController.EvalRequested += OnEvalRequested;
+				newElementController.GoBackRequested += OnGoBackRequested;
+				newElementController.GoForwardRequested += OnGoForwardRequested;
 			}
 
 			Load();
@@ -142,8 +151,8 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			if (Element == null || Control == null)
 				return;
-			Element.CanGoBack = Control.CanGoBack();
-			Element.CanGoForward = Control.CanGoForward();
+			ElementController.CanGoBack = Control.CanGoBack();
+			ElementController.CanGoForward = Control.CanGoForward();
 		}
 
 		class WebClient : WebViewClient
@@ -165,19 +174,19 @@ namespace Xamarin.Forms.Platform.Android
 
 				var source = new UrlWebViewSource { Url = url };
 				_renderer._ignoreSourceChanges = true;
-				((IElementController)_renderer.Element).SetValueFromRenderer(WebView.SourceProperty, source);
+				_renderer.ElementController.SetValueFromRenderer(WebView.SourceProperty, source);
 				_renderer._ignoreSourceChanges = false;
 
 				var args = new WebNavigatedEventArgs(WebNavigationEvent.NewPage, source, url, _navigationResult);
 
-				_renderer.Element.SendNavigated(args);
+				_renderer.ElementController.SendNavigated(args);
 
 				_renderer.UpdateCanGoBackForward();
 
 				base.OnPageFinished(view, url);
 			}
 
-			[Obsolete("This method was deprecated in API level 23.")]
+			[Obsolete("OnReceivedError is obsolete as of version 2.3.0. This method was deprecated in API level 23.")]
 			public override void OnReceivedError(AWebView view, ClientError errorCode, string description, string failingUrl)
 			{
 				_navigationResult = WebNavigationResult.Failure;
@@ -196,6 +205,7 @@ namespace Xamarin.Forms.Platform.Android
 				base.OnReceivedError(view, request, error);
 			}
 
+			[Obsolete]
 			public override bool ShouldOverrideUrlLoading(AWebView view, string url)
 			{
 				if (_renderer.Element == null)
@@ -203,7 +213,7 @@ namespace Xamarin.Forms.Platform.Android
 
 				var args = new WebNavigatingEventArgs(WebNavigationEvent.NewPage, new UrlWebViewSource { Url = url }, url);
 
-				_renderer.Element.SendNavigating(args);
+				_renderer.ElementController.SendNavigating(args);
 				_navigationResult = WebNavigationResult.Success;
 
 				_renderer.UpdateCanGoBackForward();

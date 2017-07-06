@@ -1,11 +1,7 @@
 using System;
 using System.ComponentModel;
-#if __UNIFIED__
 using UIKit;
-
-#else
-using MonoTouch.UIKit;
-#endif
+using Xamarin.Forms.PlatformConfiguration.iOSSpecific;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -59,15 +55,10 @@ namespace Xamarin.Forms.Platform.iOS
 
 		VisualElementTracker _tracker;
 
-		IPageController PageController => Element as IPageController;
-		IElementController ElementController => Element as IElementController;
+		Page PageController => Element as Page;
+		Element ElementController => Element as Element;
 
-		protected MasterDetailPage MasterDetailPage
-		{
-			get { return _masterDetailPage ?? (_masterDetailPage = (MasterDetailPage)Element); }
-		}
-
-		IMasterDetailPageController MasterDetailPageController => MasterDetailPage as IMasterDetailPageController;
+		protected MasterDetailPage MasterDetailPage => _masterDetailPage ?? (_masterDetailPage = (MasterDetailPage)Element);
 
 		UIBarButtonItem PresentButton
 		{
@@ -76,36 +67,50 @@ namespace Xamarin.Forms.Platform.iOS
 
 		protected override void Dispose(bool disposing)
 		{
-		    if (!_disposed && disposing)
-		    {
-		        if (Element != null)
-		        {
-		            PageController.SendDisappearing();
-		            Element.PropertyChanged -= HandlePropertyChanged;
-		            Element = null;
-		        }
+			if (_disposed)
+			{
+				return;
+			}
 
-		        if (_tracker != null)
-		        {
-		            _tracker.Dispose();
-		            _tracker = null;
-		        }
+			_disposed = true;
 
-		        if (_events != null)
-		        {
-		            _events.Dispose();
-		            _events = null;
-		        }
+			if (disposing)
+			{
+				if (Element != null)
+				{
+					PageController.SendDisappearing();
+					Element.PropertyChanged -= HandlePropertyChanged;
 
-		        if (_masterController != null)
-		        {
-		            _masterController.WillAppear -= MasterControllerWillAppear;
-		            _masterController.WillDisappear -= MasterControllerWillDisappear;
-		        }
+					if (MasterDetailPage?.Master != null)
+					{
+						MasterDetailPage.Master.PropertyChanged -= HandleMasterPropertyChanged;
+					}
 
-		        _disposed = true;
-		    }
-		    base.Dispose(disposing);
+					Element = null;
+				}
+
+				if (_tracker != null)
+				{
+					_tracker.Dispose();
+					_tracker = null;
+				}
+
+				if (_events != null)
+				{
+					_events.Dispose();
+					_events = null;
+				}
+
+				if (_masterController != null)
+				{
+					_masterController.WillAppear -= MasterControllerWillAppear;
+					_masterController.WillDisappear -= MasterControllerWillDisappear;
+				}
+
+				ClearControllers();
+			}
+
+			base.Dispose(disposing);
 		}
 
 		public VisualElement Element { get; private set; }
@@ -166,7 +171,7 @@ namespace Xamarin.Forms.Platform.iOS
 		public override void ViewDidDisappear(bool animated)
 		{
 			base.ViewDidDisappear(animated);
-			PageController.SendDisappearing();
+			PageController?.SendDisappearing();
 		}
 
 		public override void ViewDidLayoutSubviews()
@@ -180,10 +185,10 @@ namespace Xamarin.Forms.Platform.iOS
 			var masterBounds = _masterController.View.Frame;
 
 			if (!masterBounds.IsEmpty)
-				MasterDetailPageController.MasterBounds = new Rectangle(0, 0, masterBounds.Width, masterBounds.Height);
+				MasterDetailPage.MasterBounds = new Rectangle(0, 0, masterBounds.Width, masterBounds.Height);
 
 			if (!detailsBounds.IsEmpty)
-				MasterDetailPageController.DetailBounds = new Rectangle(0, 0, detailsBounds.Width, detailsBounds.Height);
+				MasterDetailPage.DetailBounds = new Rectangle(0, 0, detailsBounds.Width, detailsBounds.Height);
 		}
 
 		public override void ViewDidLoad()
@@ -213,19 +218,24 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			// On IOS8 the MasterViewController ViewAppear/Disappear weren't being called correctly after rotation 
 			// We now close the Master by using the new SplitView API, basicly we set it to hidden and right back to the Normal/AutomaticMode
-			if (!MasterDetailPageController.ShouldShowSplitMode && _masterVisible)
+			if (!MasterDetailPage.ShouldShowSplitMode && _masterVisible)
 			{
-				MasterDetailPageController.CanChangeIsPresented = true;
-				if (Forms.IsiOS8OrNewer)
-				{
-					PreferredDisplayMode = UISplitViewControllerDisplayMode.PrimaryHidden;
-					PreferredDisplayMode = UISplitViewControllerDisplayMode.Automatic;
-				}
+				MasterDetailPage.CanChangeIsPresented = true;
+				PreferredDisplayMode = UISplitViewControllerDisplayMode.PrimaryHidden;
+				PreferredDisplayMode = UISplitViewControllerDisplayMode.Automatic;
 			}
 
-			MasterDetailPageController.UpdateMasterBehavior();
+			MasterDetailPage.UpdateMasterBehavior();
 			MessagingCenter.Send<IVisualElementRenderer>(this, NavigationRenderer.UpdateToolbarButtons);
 			base.WillRotate(toInterfaceOrientation, duration);
+		}
+
+		public override UIViewController ChildViewControllerForStatusBarHidden()
+		{
+			if (((MasterDetailPage)Element).Detail != null)
+				return (UIViewController)Platform.GetRenderer(((MasterDetailPage)Element).Detail);
+			else
+				return base.ChildViewControllerForStatusBarHidden();
 		}
 
 		protected virtual void OnElementChanged(VisualElementChangedEventArgs e)
@@ -269,38 +279,35 @@ namespace Xamarin.Forms.Platform.iOS
 
 			if (e.PropertyName == "Master" || e.PropertyName == "Detail")
 				UpdateControllers();
-			else if (e.PropertyName == MasterDetailPage.IsPresentedProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.MasterDetailPage.IsPresentedProperty.PropertyName)
 				ToggleMaster();
-			else if (e.PropertyName == MasterDetailPage.IsGestureEnabledProperty.PropertyName)
-				PresentsWithGesture = MasterDetailPage.IsGestureEnabled;
+			else if (e.PropertyName == Xamarin.Forms.MasterDetailPage.IsGestureEnabledProperty.PropertyName)
+				base.PresentsWithGesture = this.MasterDetailPage.IsGestureEnabled;
 			MessagingCenter.Send<IVisualElementRenderer>(this, NavigationRenderer.UpdateToolbarButtons);
 		}
 
 		void MasterControllerWillAppear(object sender, EventArgs e)
 		{
 			_masterVisible = true;
-			if (MasterDetailPageController.CanChangeIsPresented)
+			if (MasterDetailPage.CanChangeIsPresented)
 				ElementController.SetValueFromRenderer(MasterDetailPage.IsPresentedProperty, true);
 		}
 
 		void MasterControllerWillDisappear(object sender, EventArgs e)
 		{
 			_masterVisible = false;
-			if (MasterDetailPageController.CanChangeIsPresented)
+			if (MasterDetailPage.CanChangeIsPresented)
 				ElementController.SetValueFromRenderer(MasterDetailPage.IsPresentedProperty, false);
 		}
 
 		void PerformButtonSelector()
 		{
-			if (Forms.IsiOS8OrNewer)
-				DisplayModeButtonItem.Target.PerformSelector(DisplayModeButtonItem.Action, DisplayModeButtonItem, 0);
-			else
-				PresentButton.Target.PerformSelector(PresentButton.Action, PresentButton, 0);
+			DisplayModeButtonItem.Target.PerformSelector(DisplayModeButtonItem.Action, DisplayModeButtonItem, 0);
 		}
 
 		void ToggleMaster()
 		{
-			if (_masterVisible == MasterDetailPage.IsPresented || MasterDetailPageController.ShouldShowSplitMode)
+			if (_masterVisible == MasterDetailPage.IsPresented || MasterDetailPage.ShouldShowSplitMode)
 				return;
 
 			PerformButtonSelector();
@@ -379,9 +386,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void IEffectControlProvider.RegisterEffect(Effect effect)
 		{
-			var platformEffect = effect as PlatformEffect;
-			if (platformEffect != null)
-				platformEffect.Container = View;
+			VisualElementRenderer<VisualElement>.RegisterEffect(effect, View);
 		}
 	}
 }

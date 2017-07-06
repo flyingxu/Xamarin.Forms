@@ -1,31 +1,47 @@
 using System;
-using System.Drawing;
-using System.Runtime.Remoting.Channels;
 using System.ComponentModel;
-#if __UNIFIED__
-using UIKit;
 
-#else
-using MonoTouch.UIKit;
-#endif
+using System.Drawing;
+using UIKit;
+using Xamarin.Forms.PlatformConfiguration.iOSSpecific;
 
 namespace Xamarin.Forms.Platform.iOS
 {
 	public class EntryRenderer : ViewRenderer<Entry, UITextField>
 	{
 		UIColor _defaultTextColor;
+		bool _disposed;
 
 		public EntryRenderer()
 		{
 			Frame = new RectangleF(0, 20, 320, 40);
 		}
 
+		public override SizeRequest GetDesiredSize(double widthConstraint, double heightConstraint)
+		{
+			//with borderStyle set to RoundedRect, iOS always returns a height of 30
+			//https://stackoverflow.com/a/36569247/1063783
+			//we get the current value, and restor it, to allow custom renderers to change the border style
+			var borderStyle = Control.BorderStyle;
+			Control.BorderStyle = UITextBorderStyle.None;
+			var size = Control.GetSizeRequest(widthConstraint, double.PositiveInfinity);
+			Control.BorderStyle = borderStyle;
+			return size;
+		}
+
 		IElementController ElementController => Element as IElementController;
 
 		protected override void Dispose(bool disposing)
 		{
+			if (_disposed)
+				return;
+
+			_disposed = true;
+
 			if (disposing)
 			{
+				_defaultTextColor = null;
+
 				if (Control != null)
 				{
 					Control.EditingDidBegin -= OnEditingBegan;
@@ -41,14 +57,17 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			base.OnElementChanged(e);
 
-			var textField = Control;
+			if (e.NewElement == null)
+				return;
 
 			if (Control == null)
 			{
-				SetNativeControl(textField = new UITextField(RectangleF.Empty));
+				var textField = new UITextField(RectangleF.Empty);
+				SetNativeControl(textField);
 
 				_defaultTextColor = textField.TextColor;
 				textField.BorderStyle = UITextBorderStyle.RoundedRect;
+				textField.ClipsToBounds = true;
 
 				textField.EditingChanged += OnEditingChanged;
 
@@ -58,16 +77,14 @@ namespace Xamarin.Forms.Platform.iOS
 				textField.EditingDidEnd += OnEditingEnded;
 			}
 
-			if (e.NewElement != null)
-			{
-				UpdatePlaceholder();
-				UpdatePassword();
-				UpdateText();
-				UpdateColor();
-				UpdateFont();
-				UpdateKeyboard();
-				UpdateAlignment();
-			}
+			UpdatePlaceholder();
+			UpdatePassword();
+			UpdateText();
+			UpdateColor();
+			UpdateFont();
+			UpdateKeyboard();
+			UpdateAlignment();
+			UpdateAdjustsFontSizeToFitWidth();
 		}
 
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -95,6 +112,8 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateColor();
 				UpdatePlaceholder();
 			}
+			else if (e.PropertyName == PlatformConfiguration.iOSSpecific.Entry.AdjustsFontSizeToFitWidthProperty.PropertyName)
+				UpdateAdjustsFontSizeToFitWidth();
 
 			base.OnElementPropertyChanged(sender, e);
 		}
@@ -111,14 +130,20 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void OnEditingEnded(object sender, EventArgs e)
 		{
+			// Typing aid changes don't always raise EditingChanged event
+			if (Control.Text != Element.Text)
+			{
+				ElementController.SetValueFromRenderer(Entry.TextProperty, Control.Text);
+			}
+
 			ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
 		}
 
-		bool OnShouldReturn(UITextField view)
+		protected virtual bool OnShouldReturn(UITextField view)
 		{
 			Control.ResignFirstResponder();
 			((IEntryController)Element).SendCompleted();
-			return true;
+			return false;
 		}
 
 		void UpdateAlignment()
@@ -136,6 +161,11 @@ namespace Xamarin.Forms.Platform.iOS
 				Control.TextColor = textColor.ToUIColor();
 		}
 
+		void UpdateAdjustsFontSizeToFitWidth()
+		{
+			Control.AdjustsFontSizeToFitWidth = Element.OnThisPlatform().AdjustsFontSizeToFitWidth();
+		}
+
 		void UpdateFont()
 		{
 			Control.Font = Element.ToUIFont();
@@ -144,6 +174,7 @@ namespace Xamarin.Forms.Platform.iOS
 		void UpdateKeyboard()
 		{
 			Control.ApplyKeyboard(Element.Keyboard);
+			Control.ReloadInputViews();
 		}
 
 		void UpdatePassword()

@@ -42,7 +42,17 @@ namespace Xamarin.Forms.Platform.WinRT
 				UpdateMinimum();
 			else if (e.PropertyName == Stepper.IncrementProperty.PropertyName)
 				UpdateIncrement();
+			else if (e.PropertyName == VisualElement.BackgroundColorProperty.PropertyName)
+				UpdateBackgroundColor();
 		}
+
+		protected override void UpdateBackgroundColor()
+		{
+			if (Control != null)
+				Control.ButtonBackgroundColor = Element.BackgroundColor;
+		}
+
+		protected override bool PreventGestureBubbling { get; set; } = true;
 
 		void OnControlValue(object sender, EventArgs e)
 		{

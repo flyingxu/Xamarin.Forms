@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Android.Content;
+using Android.OS;
 using Android.Views;
 using Android.Views.Animations;
 using ARelativeLayout = Android.Widget.RelativeLayout;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms.Platform.Android.AppCompat
 {
@@ -87,7 +89,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 			IVisualElementRenderer modalRenderer = Android.Platform.GetRenderer(modal);
 			if (modalRenderer != null)
 			{
-				var modalContainer = modalRenderer.ViewGroup.Parent as ModalContainer;
+				var modalContainer = modalRenderer.View.Parent as ModalContainer;
 				if (animated)
 				{
 					modalContainer.Animate().TranslationY(_renderer.Height).SetInterpolator(new AccelerateInterpolator(1)).SetDuration(300).SetListener(new GenericAnimatorListener
@@ -193,7 +195,9 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		void IPlatformLayout.OnLayout(bool changed, int l, int t, int r, int b)
 		{
 			if (changed)
+			{
 				LayoutRootPage(Page, r - l, b - t);
+			}
 
 			Android.Platform.GetRenderer(Page).UpdateLayout();
 
@@ -218,12 +222,14 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		internal void SetPage(Page newRoot)
 		{
 			var layout = false;
+			List<IVisualElementRenderer> toDispose = null;
+
 			if (Page != null)
 			{
 				_renderer.RemoveAllViews();
 
-				foreach (IVisualElementRenderer rootRenderer in _navModel.Roots.Select(Android.Platform.GetRenderer))
-					rootRenderer.Dispose();
+				toDispose = _navModel.Roots.Select(Android.Platform.GetRenderer).ToList();
+
 				_navModel = new NavigationModel();
 
 				layout = true;
@@ -238,7 +244,19 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 			Page.Platform = this;
 			AddChild(Page, layout);
 
-			((Application)Page.RealParent).NavigationProxy.Inner = this;
+			Application.Current.NavigationProxy.Inner = this;
+
+			if (toDispose?.Count > 0)
+			{
+				// Queue up disposal of the previous renderers after the current layout updates have finished
+				new Handler(Looper.MainLooper).Post(() =>
+				{	
+					foreach (IVisualElementRenderer rootRenderer in toDispose)
+					{
+						rootRenderer.Dispose();
+					}
+				});
+			}
 		}
 
 		void AddChild(Page page, bool layout = false)
@@ -253,7 +271,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 			if (layout)
 				LayoutRootPage(page, _renderer.Width, _renderer.Height);
 
-			_renderer.AddView(renderView.ViewGroup);
+			_renderer.AddView(renderView.View);
 		}
 
 		bool HandleBackPressed(object sender, EventArgs e)
@@ -270,14 +288,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		void LayoutRootPage(Page page, int width, int height)
 		{
 			var activity = (FormsAppCompatActivity)_context;
-			int statusBarHeight = Forms.IsLollipopOrNewer ? activity.GetStatusBarHeight() : 0;
-
-			if (page is MasterDetailPage)
-				page.Layout(new Rectangle(0, 0, _context.FromPixels(width), _context.FromPixels(height)));
-			else
-			{
-				page.Layout(new Rectangle(0, _context.FromPixels(statusBarHeight), _context.FromPixels(width), _context.FromPixels(height - statusBarHeight)));
-			}
+			page.Layout(new Rectangle(0, 0, activity.FromPixels(width), activity.FromPixels(height)));
 		}
 
 		Task PresentModal(Page modal, bool animated)
@@ -335,7 +346,9 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 				_renderer = Android.Platform.CreateRenderer(modal);
 				Android.Platform.SetRenderer(modal, _renderer);
 
-				AddView(_renderer.ViewGroup);
+				AddView(_renderer.View);
+
+				Id = Platform.GenerateViewId();
 			}
 
 			protected override void Dispose(bool disposing)
@@ -364,22 +377,21 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 			protected override void OnLayout(bool changed, int l, int t, int r, int b)
 			{
-				var activity = (FormsAppCompatActivity)Context;
-				int statusBarHeight = Forms.IsLollipopOrNewer ? activity.GetStatusBarHeight() : 0;
 				if (changed)
 				{
-					if (_modal is MasterDetailPage)
-						_modal.Layout(new Rectangle(0, 0, activity.FromPixels(r - l), activity.FromPixels(b - t)));
-					else
-					{
-						_modal.Layout(new Rectangle(0, activity.FromPixels(statusBarHeight), activity.FromPixels(r - l), activity.FromPixels(b - t - statusBarHeight)));
-					}
+					var activity = (FormsAppCompatActivity)Context;
 
-					_backgroundView.Layout(0, statusBarHeight, r - l, b - t);
+					_modal.Layout(new Rectangle(0, 0, activity.FromPixels(r - l), activity.FromPixels(b - t)));
+					_backgroundView.Layout(0, 0, r - l, b - t);
 				}
 
 				_renderer.UpdateLayout();
 			}
+		}
+
+		internal static int GenerateViewId()
+		{
+			return Android.Platform.GenerateViewId();
 		}
 
 		#region Statics

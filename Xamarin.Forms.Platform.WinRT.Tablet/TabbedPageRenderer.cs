@@ -27,8 +27,6 @@ namespace Xamarin.Forms.Platform.WinRT
 			get { return (TabbedPage)Element; }
 		}
 
-		IPageController PageController => Element as IPageController;
-
 		protected VisualElementTracker<Page, Canvas> Tracker
 		{
 			get { return _tracker; }
@@ -144,6 +142,11 @@ namespace Xamarin.Forms.Platform.WinRT
 			return new SizeRequest(result);
 		}
 
+		UIElement IVisualElementRenderer.GetNativeElement()
+		{
+			return null;
+		}
+
 		public void Dispose()
 		{
 			Dispose(true);
@@ -155,6 +158,8 @@ namespace Xamarin.Forms.Platform.WinRT
 				return;
 
 			_disposed = true;
+
+			Page?.SendDisappearing();
 			SetElement(null);
 			Tracker = null;
 		}
@@ -252,7 +257,7 @@ namespace Xamarin.Forms.Platform.WinRT
 				return;
 
 			ShowTabs();
-			PageController.SendAppearing();
+			Page.SendAppearing();
 		}
 
 		void tabs_OnLoaded(object sender, RoutedEventArgs e)
@@ -315,7 +320,7 @@ namespace Xamarin.Forms.Platform.WinRT
 		void canvas_OnUnloaded(object sender, RoutedEventArgs args)
 		{
 			RemoveTabs();
-			PageController?.SendDisappearing();
+			Page?.SendDisappearing();
 		}
 	}
 }

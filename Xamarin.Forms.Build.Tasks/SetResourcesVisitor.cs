@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -20,26 +19,15 @@ namespace Xamarin.Forms.Build.Tasks
 
 		ModuleDefinition Module { get; }
 
-		public bool VisitChildrenFirst
-		{
-			get { return false; }
-		}
-
-		public bool StopOnDataTemplate
-		{
-			get { return true; }
-		}
-
-		public bool StopOnResourceDictionary
-		{
-			get { return false; }
-		}
+		public TreeVisitingMode VisitingMode => TreeVisitingMode.TopDown;
+		public bool StopOnDataTemplate => true;
+		public bool StopOnResourceDictionary => false;
+		public bool VisitNodeOnDataTemplate => false;
 
 		public void Visit(ValueNode node, INode parentNode)
 		{
 			XmlName propertyName;
-			if (!SetPropertiesVisitor.TryGetPropertyName(node, parentNode, out propertyName))
-			{
+			if (!SetPropertiesVisitor.TryGetPropertyName(node, parentNode, out propertyName)) {
 				if (!IsCollectionItem(node, parentNode))
 					return;
 				string contentProperty;
@@ -52,18 +40,12 @@ namespace Xamarin.Forms.Build.Tasks
 					return;
 			}
 
-			if (node.SkipPrefix((node.NamespaceResolver ?? parentNode.NamespaceResolver)?.LookupPrefix(propertyName.NamespaceURI)))
-				return;
 			if (propertyName.NamespaceURI == "http://schemas.openxmlformats.org/markup-compatibility/2006" &&
 				propertyName.LocalName == "Ignorable")
-			{
-				(parentNode.IgnorablePrefixes ?? (parentNode.IgnorablePrefixes = new List<string>())).AddRange(
-					(node.Value as string).Split(','));
 				return;
-			}
 			if (propertyName.LocalName != "MergedWith")
 				return;
-			SetPropertiesVisitor.SetPropertyValue(Context.Variables[(IElementNode)parentNode], propertyName, node, Context, node);
+			Context.IL.Append(SetPropertiesVisitor.SetPropertyValue(Context.Variables[(IElementNode)parentNode], propertyName, node, Context, node));
 		}
 
 		public void Visit(MarkupNode node, INode parentNode)
@@ -77,7 +59,7 @@ namespace Xamarin.Forms.Build.Tasks
 			{
 				// Collection element, implicit content, or implicit collection element.
 				var parentVar = Context.Variables[(IElementNode)parentNode];
-				if (parentVar.VariableType.ImplementsInterface(Module.Import(typeof (IEnumerable))))
+				if (parentVar.VariableType.ImplementsInterface(Module.ImportReference(typeof (IEnumerable))))
 				{
 					if ((parentVar.VariableType.FullName == "Xamarin.Forms.ResourceDictionary" ||
 						parentVar.VariableType.Resolve().BaseType.FullName == "Xamarin.Forms.ResourceDictionary") &&
@@ -102,8 +84,8 @@ namespace Xamarin.Forms.Build.Tasks
 						Context.IL.Emit(OpCodes.Ldloc, parentVar);
 						Context.IL.Emit(OpCodes.Ldloc, Context.Variables[node]);
 						Context.IL.Emit(OpCodes.Callvirt,
-							Module.Import(
-								Module.Import(typeof (ResourceDictionary))
+							Module.ImportReference(
+								Module.ImportReference(typeof (ResourceDictionary))
 									.Resolve()
 									.Methods.Single(md => md.Name == "Add" && md.Parameters.Count == 1)));
 					}
@@ -124,19 +106,19 @@ namespace Xamarin.Forms.Build.Tasks
 							Context.Variables[node] = vardef;
 						}
 
-						//						IL_0013:  ldloc.0 
-						//						IL_0014:  ldstr "key"
-						//						IL_0019:  ldstr "foo"
-						//						IL_001e:  callvirt instance void class [Xamarin.Forms.Core]Xamarin.Forms.ResourceDictionary::Add(string, object)
+//						IL_0013:  ldloc.0 
+//						IL_0014:  ldstr "key"
+//						IL_0019:  ldstr "foo"
+//						IL_001e:  callvirt instance void class [Xamarin.Forms.Core]Xamarin.Forms.ResourceDictionary::Add(string, object)
 						Context.IL.Emit(OpCodes.Ldloc, parentVar);
 						Context.IL.Emit(OpCodes.Ldstr, (node.Properties[XmlName.xKey] as ValueNode).Value as string);
 						var varDef = Context.Variables[node];
 						Context.IL.Emit(OpCodes.Ldloc, varDef);
 						if (varDef.VariableType.IsValueType)
-							Context.IL.Emit(OpCodes.Box, Module.Import(varDef.VariableType));
+							Context.IL.Emit(OpCodes.Box, Module.ImportReference(varDef.VariableType));
 						Context.IL.Emit(OpCodes.Callvirt,
-							Module.Import(
-								Module.Import(typeof (ResourceDictionary))
+							Module.ImportReference(
+								Module.ImportReference(typeof (ResourceDictionary))
 									.Resolve()
 									.Methods.Single(md => md.Name == "Add" && md.Parameters.Count == 2)));
 					}
@@ -149,7 +131,7 @@ namespace Xamarin.Forms.Build.Tasks
 			    (propertyName.LocalName == "Resources" || propertyName.LocalName.EndsWith(".Resources", StringComparison.Ordinal)) &&
 				(Context.Variables[node].VariableType.FullName == "Xamarin.Forms.ResourceDictionary" ||
 					Context.Variables[node].VariableType.Resolve().BaseType.FullName == "Xamarin.Forms.ResourceDictionary"))
-				SetPropertiesVisitor.SetPropertyValue(Context.Variables[(IElementNode)parentNode], propertyName, node, Context, node);
+				Context.IL.Append(SetPropertiesVisitor.SetPropertyValue(Context.Variables[(IElementNode)parentNode], propertyName, node, Context, node));
 		}
 
 		public void Visit(RootNode node, INode parentNode)

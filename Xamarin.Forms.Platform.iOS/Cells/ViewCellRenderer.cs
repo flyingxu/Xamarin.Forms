@@ -1,23 +1,8 @@
 using System;
 using System.ComponentModel;
-using Xamarin.Forms.Internals;
-
-#if __UNIFIED__
 using UIKit;
-#else
-using MonoTouch.UIKit;
-using System.Drawing;
-#endif
-#if __UNIFIED__
 using RectangleF = CoreGraphics.CGRect;
 using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -63,8 +48,11 @@ namespace Xamarin.Forms.Platform.iOS
 		internal class ViewTableCell : UITableViewCell, INativeElementView
 		{
 			WeakReference<IVisualElementRenderer> _rendererRef;
-
 			ViewCell _viewCell;
+
+			Element INativeElementView.Element => ViewCell;
+			internal bool SupressSeparator { get; set; }
+			bool _disposed;
 
 			public ViewTableCell(string key) : base(UITableViewCellStyle.Default, key)
 			{
@@ -80,10 +68,6 @@ namespace Xamarin.Forms.Platform.iOS
 					UpdateCell(value);
 				}
 			}
-
-			Element INativeElementView.Element => ViewCell;
-
-			internal bool SupressSeparator { get; set; }
 
 			public override void LayoutSubviews()
 			{
@@ -130,6 +114,9 @@ namespace Xamarin.Forms.Platform.iOS
 
 			protected override void Dispose(bool disposing)
 			{
+				if (_disposed)
+					return;
+
 				if (disposing)
 				{
 					IVisualElementRenderer renderer;
@@ -141,13 +128,20 @@ namespace Xamarin.Forms.Platform.iOS
 
 						_rendererRef = null;
 					}
+
+					_viewCell = null;
 				}
+
+				_disposed = true;
 
 				base.Dispose(disposing);
 			}
 
 			IVisualElementRenderer GetNewRenderer()
 			{
+				if (_viewCell.View == null)
+					throw new InvalidOperationException($"ViewCell must have a {nameof(_viewCell.View)}");
+
 				var newRenderer = Platform.CreateRenderer(_viewCell.View);
 				_rendererRef = new WeakReference<IVisualElementRenderer>(newRenderer);
 				ContentView.AddSubview(newRenderer.NativeView);
@@ -156,14 +150,13 @@ namespace Xamarin.Forms.Platform.iOS
 
 			void UpdateCell(ViewCell cell)
 			{
-				ICellController cellController = _viewCell;
-				if (cellController != null)
-					Device.BeginInvokeOnMainThread(cellController.SendDisappearing);
+				if (_viewCell != null)
+					Device.BeginInvokeOnMainThread(_viewCell.SendDisappearing);
 
+				this._viewCell = cell;
 				_viewCell = cell;
-				cellController = cell;
 
-				Device.BeginInvokeOnMainThread(cellController.SendAppearing);
+				Device.BeginInvokeOnMainThread(_viewCell.SendAppearing);
 
 				IVisualElementRenderer renderer;
 				if (_rendererRef == null || !_rendererRef.TryGetTarget(out renderer))
@@ -173,9 +166,9 @@ namespace Xamarin.Forms.Platform.iOS
 					if (renderer.Element != null && renderer == Platform.GetRenderer(renderer.Element))
 						renderer.Element.ClearValue(Platform.RendererProperty);
 
-					var type = Registrar.Registered.GetHandlerType(_viewCell.View.GetType());
+					var type = Internals.Registrar.Registered.GetHandlerType(this._viewCell.View.GetType());
 					if (renderer.GetType() == type || (renderer is Platform.DefaultRenderer && type == null))
-						renderer.SetElement(_viewCell.View);
+						renderer.SetElement(this._viewCell.View);
 					else
 					{
 						//when cells are getting reused the element could be already set to another cell
@@ -186,7 +179,7 @@ namespace Xamarin.Forms.Platform.iOS
 					}
 				}
 
-				Platform.SetRenderer(_viewCell.View, renderer);
+				Platform.SetRenderer(this._viewCell.View, renderer);
 			}
 		}
 	}

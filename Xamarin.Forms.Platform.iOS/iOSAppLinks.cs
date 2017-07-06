@@ -1,15 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
-#if __UNIFIED__
-using Foundation;
 using CoreSpotlight;
+using Foundation;
 using UIKit;
-
-#else
-using MonoTouch.Foundation;
-using MonoTouch.UIKit;
-using MonoTouch.CoreSpotlight;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -60,11 +53,7 @@ namespace Xamarin.Forms.Platform.iOS
 			//we need to make sure we index the item in spotlight first or the RelatedUniqueIdentifier will not work
 			await IndexItemAsync(searchItem);
 
-#if __UNIFIED__
 			var activity = new NSUserActivity($"{appDomain}.{contentType}");
-#else
-			var activity = new NSUserActivity (new NSString($"{appDomain}.{contentType}"));
-#endif
 			activity.Title = deepLinkUri.Title;
 			activity.EligibleForSearch = true;
 
@@ -120,19 +109,23 @@ namespace Xamarin.Forms.Platform.iOS
 
 			var source = deepLinkUri.Thumbnail;
 			IImageSourceHandler handler;
-			if (source != null && (handler = Registrar.Registered.GetHandler<IImageSourceHandler>(source.GetType())) != null)
+			if (source != null && (handler = Internals.Registrar.Registered.GetHandler<IImageSourceHandler>(source.GetType())) != null)
 			{
 				UIImage uiimage;
 				try
 				{
 					uiimage = await handler.LoadImageAsync(source);
+
+					if (uiimage == null)
+						throw new InvalidOperationException("AppLinkEntry Thumbnail must be set to a valid source");
+
+					searchableAttributeSet.ThumbnailData = uiimage.AsPNG();
+					uiimage.Dispose();
 				}
 				catch (OperationCanceledException)
 				{
 					uiimage = null;
 				}
-				searchableAttributeSet.ThumbnailData = uiimage.AsPNG();
-				uiimage.Dispose();
 			}
 
 			return searchableAttributeSet;

@@ -1,17 +1,9 @@
 using System;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-#if __UNIFIED__
+using System.Globalization;
+using CoreSpotlight;
 using Foundation;
 using UIKit;
-using CoreSpotlight;
-
-#else
-using MonoTouch.Foundation;
-using MonoTouch.UIKit;
-using MonoTouch.CoreSpotlight;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -63,6 +55,8 @@ namespace Xamarin.Forms.Platform.iOS
 			if (_application != null && _isSuspended)
 			{
 				_isSuspended = false;
+				CultureInfo.CurrentCulture.ClearCachedData();
+				TimeZoneInfo.ClearCachedData();
 				_application.SendResume();
 			}
 		}
@@ -123,7 +117,7 @@ namespace Xamarin.Forms.Platform.iOS
 			if (application == null)
 				throw new ArgumentNullException("application");
 
-			Application.Current = application;
+			Application.SetCurrentApplication(application);
 			_application = application;
 			(application as IApplicationController)?.SetAppIndexingProvider(new IOSAppIndexingProvider());
 
@@ -171,9 +165,11 @@ namespace Xamarin.Forms.Platform.iOS
 				return;
 
 			var platformRenderer = (PlatformRenderer)_window.RootViewController;
-			_window.RootViewController = _application.MainPage.CreateViewController();
+
 			if (platformRenderer != null)
 				((IDisposable)platformRenderer.Platform).Dispose();
+
+			_window.RootViewController = _application.MainPage.CreateViewController();
 		}
 	}
 }

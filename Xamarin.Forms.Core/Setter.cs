@@ -8,6 +8,7 @@ using Xamarin.Forms.Xaml;
 namespace Xamarin.Forms
 {
 	[ContentProperty("Value")]
+	[ProvideCompiled("Xamarin.Forms.Core.XamlC.SetterValueProvider")]
 	public sealed class Setter : IValueProvider
 	{
 		readonly ConditionalWeakTable<BindableObject, object> _originalValues = new ConditionalWeakTable<BindableObject, object>();
@@ -62,12 +63,12 @@ namespace Xamarin.Forms
 		internal void UnApply(BindableObject target, bool fromStyle = false)
 		{
 			if (target == null)
-				throw new ArgumentNullException("target");
+				throw new ArgumentNullException(nameof(target));
 			if (Property == null)
 				return;
 
 			object actual = target.GetValue(Property);
-			if (!fromStyle && !Equals(actual, Value))
+			if (!Equals(actual, Value) && !(Value is Binding) && !(Value is DynamicResource))
 			{
 				//Do not reset default value if the value has been changed
 				_originalValues.Remove(target);

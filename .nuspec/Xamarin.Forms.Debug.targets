@@ -63,9 +63,11 @@
 	<!-- duplicate legacy InitializeComponent, create a ctor with bool param -->
 	<Target Name="GenerateDebugCode">
 		<DebugXamlCTask 
-			Assembly = "$(IntermediateOutputPath)$(TargetFileName)" 
+			Assembly = "$(IntermediateOutputPath)$(TargetFileName)"
 			ReferencePath = "@(ReferencePath)"
-			DebugSymbols = "$(DebugSymbols)" />
+			Verbosity = "4"
+			DebugSymbols = "$(DebugSymbols)"
+			DebugType = "$(DebugType)"/>
 	</Target>
 
 	<Target Name="XamlC">
@@ -73,6 +75,7 @@
 			Assembly = "$(IntermediateOutputPath)$(TargetFileName)"
 			ReferencePath = "@(ReferencePath)"
 			DebugSymbols = "$(DebugSymbols)"
+			DebugType = "$(DebugType)"
 			Verbosity = "4"
 			KeepXamlResources = "true"
 			OptimizeIL = "true" />

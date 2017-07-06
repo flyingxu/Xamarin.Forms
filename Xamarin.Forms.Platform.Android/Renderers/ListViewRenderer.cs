@@ -6,6 +6,8 @@ using Android.Views;
 using AListView = Android.Widget.ListView;
 using AView = Android.Views.View;
 using Xamarin.Forms.Internals;
+using System;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
 
 namespace Xamarin.Forms.Platform.Android
 {
@@ -43,14 +45,14 @@ namespace Xamarin.Forms.Platform.Android
 
 				if (_headerRenderer != null)
 				{
-					_headerRenderer.ViewGroup.RemoveAllViews();
+					(_headerRenderer.View as ViewGroup)?.RemoveAllViews();
 					_headerRenderer.Dispose();
 					_headerRenderer = null;
 				}
 
 				if (_footerRenderer != null)
 				{
-					_footerRenderer.ViewGroup.RemoveAllViews();
+					(_footerRenderer.View as ViewGroup)?.RemoveAllViews();
 					_footerRenderer.Dispose();
 					_footerRenderer = null;
 				}
@@ -95,6 +97,11 @@ namespace Xamarin.Forms.Platform.Android
 			_adapter.IsAttachedToWindow = _isAttached;
 		}
 
+		protected override AListView CreateNativeControl()
+		{
+			return new AListView(Context);
+		}
+
 		protected override void OnElementChanged(ElementChangedEventArgs<ListView> e)
 		{
 			base.OnElementChanged(e);
@@ -116,7 +123,7 @@ namespace Xamarin.Forms.Platform.Android
 				if (nativeListView == null)
 				{
 					var ctx = Context;
-					nativeListView = new AListView(ctx);
+					nativeListView = CreateNativeControl();
 					_refresh = new SwipeRefreshLayout(ctx);
 					_refresh.SetOnRefreshListener(this);
 					_refresh.AddView(nativeListView, LayoutParams.MatchParent);
@@ -134,7 +141,7 @@ namespace Xamarin.Forms.Platform.Android
 				nativeListView.Focusable = false;
 				nativeListView.DescendantFocusability = DescendantFocusability.AfterDescendants;
 				nativeListView.OnFocusChangeListener = this;
-				nativeListView.Adapter = _adapter = new ListViewAdapter(Context, nativeListView, e.NewElement);
+				nativeListView.Adapter = _adapter = e.NewElement.IsGroupingEnabled && e.NewElement.OnThisPlatform ().IsFastScrollEnabled () ? new GroupedListViewAdapter (Context, nativeListView, e.NewElement) : new ListViewAdapter(Context, nativeListView, e.NewElement);
 				_adapter.HeaderView = _headerView;
 				_adapter.FooterView = _footerView;
 				_adapter.IsAttachedToWindow = _isAttached;
@@ -142,6 +149,7 @@ namespace Xamarin.Forms.Platform.Android
 				UpdateHeader();
 				UpdateFooter();
 				UpdateIsSwipeToRefreshEnabled();
+				UpdateFastScrollEnabled();
 			}
 		}
 
@@ -161,6 +169,8 @@ namespace Xamarin.Forms.Platform.Android
 				UpdateIsRefreshing();
 			else if (e.PropertyName == ListView.SeparatorColorProperty.PropertyName || e.PropertyName == ListView.SeparatorVisibilityProperty.PropertyName)
 				_adapter.NotifyDataSetChanged();
+			else if (e.PropertyName == PlatformConfiguration.AndroidSpecific.ListView.IsFastScrollEnabledProperty.PropertyName)
+				UpdateFastScrollEnabled();
 		}
 
 		protected override void OnLayout(bool changed, int l, int t, int r, int b)
@@ -201,6 +211,9 @@ namespace Xamarin.Forms.Platform.Android
 			else
 			{
 				position = templatedItems.GetGlobalIndexOfItem(scrollArgs.Item);
+				if (position == -1)
+					return;
+
 				cell = templatedItems[position];
 			}
 
@@ -320,6 +333,13 @@ namespace Xamarin.Forms.Platform.Android
 				_refresh.Enabled = Element.IsPullToRefreshEnabled && (Element as IListViewController).RefreshAllowed;
 		}
 
+		void UpdateFastScrollEnabled()
+		{
+			if (Control != null) {
+				Control.FastScrollEnabled = Element.OnThisPlatform ().IsFastScrollEnabled ();
+			}
+		}
+
 		internal class Container : ViewGroup
 		{
 			IVisualElementRenderer _child;
@@ -333,12 +353,12 @@ namespace Xamarin.Forms.Platform.Android
 				set
 				{
 					if (_child != null)
-						RemoveView(_child.ViewGroup);
+						RemoveView(_child.View);
 
 					_child = value;
 
 					if (value != null)
-						AddView(value.ViewGroup);
+						AddView(value.View);
 				}
 			}
 
@@ -370,7 +390,7 @@ namespace Xamarin.Forms.Platform.Android
 				int widthSpec = MeasureSpecFactory.MakeMeasureSpec((int)ctx.ToPixels(width), MeasureSpecMode.Exactly);
 				int heightSpec = MeasureSpecFactory.MakeMeasureSpec((int)ctx.ToPixels(request.Request.Height), MeasureSpecMode.Exactly);
 
-				_child.ViewGroup.Measure(widthMeasureSpec, heightMeasureSpec);
+				_child.View.Measure(widthMeasureSpec, heightMeasureSpec);
 				SetMeasuredDimension(widthSpec, heightSpec);
 			}
 		}

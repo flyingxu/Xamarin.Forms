@@ -6,6 +6,7 @@
 	<ResourceDictionary.MergedDictionaries>
 		<ResourceDictionary Source="Resources.xaml" />
 		<ResourceDictionary Source="FormsTextBoxStyle.xaml" />
+        <ResourceDictionary Source="FormsProgressBarStyle.xaml" />
 	</ResourceDictionary.MergedDictionaries>
 
 	<SolidColorBrush x:Key="TabButtonPointerOverBackgroundBrush" Color="#44888888" />
@@ -327,7 +328,7 @@
 							<RowDefinition Height="*" />
 						</Grid.RowDefinitions>
 
-						<Grid Grid.Row="0" Grid.Column="0" Height="79" VerticalAlignment="Center" Background="{TemplateBinding NavigationBarBackground}" Visibility="{Binding ShowNavigationBar,RelativeSource={RelativeSource Mode=TemplatedParent},Converter={StaticResource BoolVisibilityConverter}}">
+						<Grid Grid.Row="0" Grid.Column="0" Height="79" VerticalAlignment="Center" Background="{TemplateBinding ToolbarBackground}" Visibility="{TemplateBinding TitleVisibility}">
 							<Grid.ColumnDefinitions>
 								<ColumnDefinition Width="Auto" MinWidth="{Binding TitleInset,RelativeSource={RelativeSource TemplatedParent}}" />
 								<ColumnDefinition Width="*" />

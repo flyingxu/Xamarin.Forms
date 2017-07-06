@@ -46,6 +46,12 @@ namespace Xamarin.Forms.Platform.WinRT
 
 		public void Dispose()
 		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
 			if (_disposed)
 				return;
 
@@ -56,6 +62,7 @@ namespace Xamarin.Forms.Platform.WinRT
 			{
 				element.ChildAdded -= OnChildAdded;
 				element.ChildRemoved -= OnChildRemoved;
+				element.ChildrenReordered -= OnChildrenReordered;
 			}
 		}
 
@@ -67,6 +74,7 @@ namespace Xamarin.Forms.Platform.WinRT
 			_isLoaded = true;
 			_renderer.Element.ChildAdded += OnChildAdded;
 			_renderer.Element.ChildRemoved += OnChildRemoved;
+			_renderer.Element.ChildrenReordered += OnChildrenReordered;
 
 			ReadOnlyCollection<Element> children = ElementController.LogicalChildren;
 			for (var i = 0; i < children.Count; i++)
@@ -144,6 +152,11 @@ namespace Xamarin.Forms.Platform.WinRT
 
 				view.Cleanup();
 			}
+		}
+
+		void OnChildrenReordered(object sender, EventArgs e)
+		{
+			EnsureZIndex();
 		}
 	}
 }

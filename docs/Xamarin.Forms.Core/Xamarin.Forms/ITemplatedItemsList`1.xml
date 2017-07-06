@@ -28,7 +28,7 @@
   </Interfaces>
   <Docs>
     <typeparam name="TItem">To be added.</typeparam>
-    <summary>To be added.</summary>
+    <summary>This interface is for internal use by platform renderers.</summary>
     <remarks>To be added.</remarks>
   </Docs>
   <Members>
@@ -43,7 +43,7 @@
         <ReturnType>System.Object</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>
@@ -62,8 +62,8 @@
         <Parameter Name="group" Type="Xamarin.Forms.ITemplatedItemsList&lt;TItem&gt;" />
       </Parameters>
       <Docs>
-        <param name="group">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="group">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -82,8 +82,8 @@
         <Parameter Name="item" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -102,8 +102,8 @@
         <Parameter Name="index" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="index">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="index">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -122,8 +122,8 @@
         <Parameter Name="item" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -143,9 +143,9 @@
         <Parameter Name="item" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="group">To be added.</param>
-        <param name="item">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="group">For internal use by the Xamarin.Forms platform.</param>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -165,9 +165,9 @@
         <Parameter Name="leftOver" Type="System.Int32&amp;" RefType="out" />
       </Parameters>
       <Docs>
-        <param name="globalIndex">To be added.</param>
-        <param name="leftOver">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="globalIndex">For internal use by the Xamarin.Forms platform.</param>
+        <param name="leftOver">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -183,7 +183,7 @@
         <ReturnType>System.Collections.Specialized.NotifyCollectionChangedEventHandler</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -198,7 +198,7 @@
         <ReturnType>TItem</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>
@@ -217,8 +217,8 @@
         <Parameter Name="item" Type="TItem" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -234,7 +234,7 @@
         <ReturnType>System.Collections.IEnumerable</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>
@@ -250,7 +250,7 @@
         <ReturnType>Xamarin.Forms.IListProxy</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>
@@ -266,7 +266,7 @@
         <ReturnType>System.String</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>
@@ -282,7 +282,7 @@
         <ReturnType>System.ComponentModel.PropertyChangedEventHandler</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -297,7 +297,7 @@
         <ReturnType>System.Collections.Generic.IReadOnlyList&lt;System.String&gt;</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>
@@ -317,9 +317,9 @@
         <Parameter Name="index" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="content">To be added.</param>
-        <param name="index">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="content">For internal use by the Xamarin.Forms platform.</param>
+        <param name="index">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -339,9 +339,9 @@
         <Parameter Name="groupIndex" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="content">To be added.</param>
-        <param name="groupIndex">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="content">For internal use by the Xamarin.Forms platform.</param>
+        <param name="groupIndex">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>

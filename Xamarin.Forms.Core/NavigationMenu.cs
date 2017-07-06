@@ -1,15 +1,24 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Xamarin.Forms.Platform;
 
-namespace Xamarin.Forms
+namespace Xamarin.Forms.Internals
 {
 	// Mark as internal until renderers are ready for release after 1.0
 	[RenderWith(typeof(_NavigationMenuRenderer))]
-	internal class NavigationMenu : View
+	[EditorBrowsable(EditorBrowsableState.Never)]
+	public class NavigationMenu : View, INavigationMenuController, IElementConfiguration<NavigationMenu>
 	{
 		readonly List<Page> _targets = new List<Page>();
+
+		readonly Lazy<PlatformConfigurationRegistry<NavigationMenu>> _platformConfigurationRegistry;
+
+		public NavigationMenu()
+		{
+			_platformConfigurationRegistry = new Lazy<PlatformConfigurationRegistry<NavigationMenu>>(() => new PlatformConfigurationRegistry<NavigationMenu>(this));
+		}
 
 		public IEnumerable<Page> Targets
 		{
@@ -52,12 +61,13 @@ namespace Xamarin.Forms
 			}
 		}
 
-		internal void SendTargetSelected(Page target)
+		public IPlatformElementConfiguration<T, NavigationMenu> On<T>() where T : IConfigPlatform
 		{
-			TargetSelected(target);
+			return _platformConfigurationRegistry.Value.On<T>();
 		}
 
-		void TargetSelected(Page target)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SendTargetSelected(Page target)
 		{
 			Navigation.PushAsync(target);
 		}

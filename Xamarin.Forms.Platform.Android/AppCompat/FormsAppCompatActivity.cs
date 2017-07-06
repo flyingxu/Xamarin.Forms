@@ -1,6 +1,7 @@
 #region
 
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Linq;
 using Android.App;
@@ -14,10 +15,13 @@ using Android.Util;
 using Android.Views;
 using Android.Widget;
 using Xamarin.Forms.Platform.Android.AppCompat;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific.AppCompat;
 using AToolbar = Android.Support.V7.Widget.Toolbar;
 using AColor = Android.Graphics.Color;
 using AlertDialog = Android.Support.V7.App.AlertDialog;
 using ARelativeLayout = Android.Widget.RelativeLayout;
+using Xamarin.Forms.Internals;
 
 #endregion
 
@@ -41,8 +45,6 @@ namespace Xamarin.Forms.Platform.Android
 		AndroidApplicationLifecycleState _previousState;
 
 		bool _renderersAdded;
-		int _statusBarHeight = -1;
-		global::Android.Views.View _statusBarUnderlay;
 
 		// Override this if you want to handle the default Android behavior of restoring fragments on an application restart
 		protected virtual bool AllowFragmentRestore => false;
@@ -52,6 +54,8 @@ namespace Xamarin.Forms.Platform.Android
 			_previousState = AndroidApplicationLifecycleState.Uninitialized;
 			_currentState = AndroidApplicationLifecycleState.Uninitialized;
 		}
+
+		IApplicationController Controller => _application;
 
 		public event EventHandler ConfigurationChanged;
 
@@ -99,7 +103,10 @@ namespace Xamarin.Forms.Platform.Android
 
 		public void SetStatusBarColor(AColor color)
 		{
-			_statusBarUnderlay.SetBackgroundColor(color);
+			if (Forms.IsLollipopOrNewer)
+			{
+				Window.SetStatusBarColor(color);
+			}
 		}
 
 		protected void LoadApplication(Application application)
@@ -109,8 +116,8 @@ namespace Xamarin.Forms.Platform.Android
 				RegisterHandlerForDefaultRenderer(typeof(NavigationPage), typeof(NavigationPageRenderer), typeof(NavigationRenderer));
 				RegisterHandlerForDefaultRenderer(typeof(TabbedPage), typeof(TabbedPageRenderer), typeof(TabbedRenderer));
 				RegisterHandlerForDefaultRenderer(typeof(MasterDetailPage), typeof(MasterDetailPageRenderer), typeof(MasterDetailRenderer));
-				RegisterHandlerForDefaultRenderer(typeof(Button), typeof(AppCompat.ButtonRenderer), typeof(ButtonRenderer));
-				RegisterHandlerForDefaultRenderer(typeof(Switch), typeof(AppCompat.SwitchRenderer), typeof(SwitchRenderer));
+				RegisterHandlerForDefaultRenderer(typeof(Button), typeof(FastRenderers.ButtonRenderer), typeof(ButtonRenderer));
+                RegisterHandlerForDefaultRenderer(typeof(Switch), typeof(AppCompat.SwitchRenderer), typeof(SwitchRenderer));
 				RegisterHandlerForDefaultRenderer(typeof(Picker), typeof(AppCompat.PickerRenderer), typeof(PickerRenderer));
 				RegisterHandlerForDefaultRenderer(typeof(Frame), typeof(AppCompat.FrameRenderer), typeof(FrameRenderer));
 				RegisterHandlerForDefaultRenderer(typeof(CarouselPage), typeof(AppCompat.CarouselPageRenderer), typeof(CarouselPageRenderer));
@@ -123,7 +130,9 @@ namespace Xamarin.Forms.Platform.Android
 
 			_application = application;
 			(application as IApplicationController)?.SetAppIndexingProvider(new AndroidAppIndexProvider(this));
-			Xamarin.Forms.Application.Current = application;
+			Xamarin.Forms.Application.SetCurrentApplication(application);
+
+			SetSoftInputMode();
 
 			CheckForAppLink(Intent);
 
@@ -141,7 +150,6 @@ namespace Xamarin.Forms.Platform.Android
 			if (_activityResultCallbacks.TryGetValue(requestCode, out callback))
 				callback(resultCode, data);
 		}
-
 
 		protected override void OnCreate(Bundle savedInstanceState)
 		{
@@ -164,10 +172,8 @@ namespace Xamarin.Forms.Platform.Android
 			}
 			else
 				bar = new AToolbar(this);
-
+			
 			SetSupportActionBar(bar);
-
-			Window.SetSoftInputMode(SoftInput.AdjustPan);
 
 			_layout = new ARelativeLayout(BaseContext);
 			SetContentView(_layout);
@@ -179,42 +185,23 @@ namespace Xamarin.Forms.Platform.Android
 
 			OnStateChanged();
 
-			_statusBarUnderlay = new global::Android.Views.View(this);
-			var layoutParameters = new ARelativeLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, GetStatusBarHeight()) { AlignWithParent = true };
-			layoutParameters.AddRule(LayoutRules.AlignTop);
-			_statusBarUnderlay.LayoutParameters = layoutParameters;
-			_layout.AddView(_statusBarUnderlay);
-
 			if (Forms.IsLollipopOrNewer)
 			{
-				Window.DecorView.SystemUiVisibility = (StatusBarVisibility)(SystemUiFlags.LayoutFullscreen | SystemUiFlags.LayoutStable);
+				// Allow for the status bar color to be changed
 				Window.AddFlags(WindowManagerFlags.DrawsSystemBarBackgrounds);
-				Window.SetStatusBarColor(AColor.Transparent);
-
-				int primaryColorDark = GetColorPrimaryDark();
-
-				if (primaryColorDark != 0)
-				{
-					int r = AColor.GetRedComponent(primaryColorDark);
-					int g = AColor.GetGreenComponent(primaryColorDark);
-					int b = AColor.GetBlueComponent(primaryColorDark);
-					int a = AColor.GetAlphaComponent(primaryColorDark);
-					SetStatusBarColor(AColor.Argb(a, r, g, b));
-				}
 			}
 		}
 
 		protected override void OnDestroy()
 		{
-			// may never be called
-			base.OnDestroy();
-
 			MessagingCenter.Unsubscribe<Page, AlertArguments>(this, Page.AlertSignalName);
 			MessagingCenter.Unsubscribe<Page, bool>(this, Page.BusySetSignalName);
 			MessagingCenter.Unsubscribe<Page, ActionSheetArguments>(this, Page.ActionSheetSignalName);
 
-			if (_platform != null)
-				_platform.Dispose();
+			_platform?.Dispose();
+
+			// call at the end to avoid race conditions with Platform dispose
+			base.OnDestroy();
 		}
 
 		protected override void OnNewIntent(Intent intent)
@@ -254,6 +241,14 @@ namespace Xamarin.Forms.Platform.Android
 			// counterpart to OnPause
 			base.OnResume();
 
+			if (_application != null && _application.OnThisPlatform().GetShouldPreserveKeyboardOnResume())
+			{
+				if (CurrentFocus != null && (CurrentFocus is EditText || CurrentFocus is TextView || CurrentFocus is SearchView))
+				{
+					CurrentFocus.ShowKeyboard();
+				}
+			}
+
 			_previousState = _currentState;
 			_currentState = AndroidApplicationLifecycleState.OnResume;
 
@@ -290,22 +285,12 @@ namespace Xamarin.Forms.Platform.Android
 			OnStateChanged();
 		}
 
-		internal int GetStatusBarHeight()
-		{
-			if (_statusBarHeight >= 0)
-				return _statusBarHeight;
-
-			var result = 0;
-			int resourceId = Resources.GetIdentifier("status_bar_height", "dimen", "android");
-			if (resourceId > 0)
-				result = Resources.GetDimensionPixelSize(resourceId);
-			return _statusBarHeight = result;
-		}
-
 		void AppOnPropertyChanged(object sender, PropertyChangedEventArgs args)
 		{
 			if (args.PropertyName == "MainPage")
 				InternalSetPage(_application.MainPage);
+			if (args.PropertyName == PlatformConfiguration.AndroidSpecific.Application.WindowSoftInputModeAdjustProperty.PropertyName)
+				SetSoftInputMode();
 		}
 
 		void CheckForAppLink(Intent intent)
@@ -317,32 +302,6 @@ namespace Xamarin.Forms.Platform.Android
 
 			var link = new Uri(strLink);
 			_application?.SendOnAppLinkRequestReceived(link);
-		}
-
-		int GetColorPrimaryDark()
-		{
-			FormsAppCompatActivity context = this;
-			int id = global::Android.Resource.Attribute.ColorPrimaryDark;
-			using (var value = new TypedValue())
-			{
-				try
-				{
-					Resources.Theme theme = context.Theme;
-					if (theme != null && theme.ResolveAttribute(id, value, true))
-					{
-						if (value.Type >= DataType.FirstInt && value.Type <= DataType.LastInt)
-							return value.Data;
-						if (value.Type == DataType.String)
-							return ContextCompat.GetColor(context, value.ResourceId);
-					}
-				}
-				catch (Exception ex)
-				{
-					Log.Warning("Xamarin.Forms.Platform.Android.FormsAppCompatActivity", "Error retrieving color resource: {0}", ex);
-				}
-
-				return -1;
-			}
 		}
 
 		void InternalSetPage(Page page)
@@ -407,10 +366,6 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			_busyCount = Math.Max(0, enabled ? _busyCount + 1 : _busyCount - 1);
 
-			if (!Forms.SupportsProgress)
-				return;
-
-			SetProgressBarIndeterminate(true);
 			UpdateProgressBarVisibility(_busyCount > 0);
 		}
 
@@ -441,12 +396,57 @@ namespace Xamarin.Forms.Platform.Android
 			InternalSetPage(_application.MainPage);
 		}
 
+		void SetSoftInputMode()
+		{
+			SoftInput adjust = SoftInput.AdjustPan;
+
+			if (Xamarin.Forms.Application.Current != null)
+			{
+				var elementValue = Xamarin.Forms.Application.Current.OnThisPlatform().GetWindowSoftInputModeAdjust();
+				switch (elementValue)
+				{
+					default:
+					case WindowSoftInputModeAdjust.Pan:
+						adjust = SoftInput.AdjustPan;
+						break;
+
+					case WindowSoftInputModeAdjust.Resize:
+						adjust = SoftInput.AdjustResize;
+						break;
+				}
+			}
+
+			Window.SetSoftInputMode(adjust);
+		}
+
+		public override void OnWindowAttributesChanged(WindowManagerLayoutParams @params)
+		{
+			base.OnWindowAttributesChanged(@params);
+
+			if (Xamarin.Forms.Application.Current == null || Xamarin.Forms.Application.Current.MainPage == null)
+				return;
+
+			// sync between Window flag and Forms property
+			if (@params.Flags.HasFlag(WindowManagerFlags.Fullscreen))
+			{
+				if (Forms.TitleBarVisibility != AndroidTitleBarVisibility.Never)
+					Forms.TitleBarVisibility = AndroidTitleBarVisibility.Never;
+			}
+			else
+			{
+				if (Forms.TitleBarVisibility != AndroidTitleBarVisibility.Default)
+					Forms.TitleBarVisibility = AndroidTitleBarVisibility.Default;
+			}
+		}
+
 		void UpdateProgressBarVisibility(bool isBusy)
 		{
 			if (!Forms.SupportsProgress)
 				return;
-
+#pragma warning disable 612, 618
+			SetProgressBarIndeterminate(true);
 			SetProgressBarIndeterminateVisibility(isBusy);
+#pragma warning restore 612, 618
 		}
 
 		internal class DefaultApplication : Application
@@ -460,23 +460,6 @@ namespace Xamarin.Forms.Platform.Android
 		public static int TabLayoutResource { get; set; }
 
 		public static int ToolbarResource { get; set; }
-
-		internal static int GetUniqueId()
-		{
-			// getting unique Id's is an art, and I consider myself the Jackson Pollock of the field
-			if ((int)Build.VERSION.SdkInt >= 17)
-				return global::Android.Views.View.GenerateViewId();
-
-			// Numbers higher than this range reserved for xml
-			// If we roll over, it can be exceptionally problematic for the user if they are still retaining things, android's internal implementation is
-			// basically identical to this except they do a lot of locking we don't have to because we know we only do this
-			// from the UI thread
-			if (s_id >= 0x00ffffff)
-				s_id = 0x00000400;
-			return s_id++;
-		}
-
-		static int s_id = 0x00000400;
 
 		#endregion
 	}

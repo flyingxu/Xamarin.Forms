@@ -1,10 +1,11 @@
 using System;
+using Xamarin.Forms.Internals;
 using Xamarin.Forms.Platform;
 
 namespace Xamarin.Forms
 {
 	[RenderWith(typeof(_StepperRenderer))]
-	public class Stepper : View
+	public class Stepper : View, IElementConfiguration<Stepper>
 	{
 		public static readonly BindableProperty MaximumProperty = BindableProperty.Create("Maximum", typeof(double), typeof(Stepper), 100.0, validateValue: (bindable, value) =>
 		{
@@ -42,8 +43,11 @@ namespace Xamarin.Forms
 
 		public static readonly BindableProperty IncrementProperty = BindableProperty.Create("Increment", typeof(double), typeof(Stepper), 1.0);
 
+		readonly Lazy<PlatformConfigurationRegistry<Stepper>> _platformConfigurationRegistry;
+
 		public Stepper()
 		{
+			_platformConfigurationRegistry = new Lazy<PlatformConfigurationRegistry<Stepper>>(() => new PlatformConfigurationRegistry<Stepper>(this));
 		}
 
 		public Stepper(double min, double max, double val, double increment)
@@ -90,5 +94,10 @@ namespace Xamarin.Forms
 		}
 
 		public event EventHandler<ValueChangedEventArgs> ValueChanged;
+		
+		public IPlatformElementConfiguration<T, Stepper> On<T>() where T : IConfigPlatform
+		{
+			return _platformConfigurationRegistry.Value.On<T>();
+		}
 	}
 }

@@ -1,10 +1,7 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using Android.Views;
 using Xamarin.Forms.Internals;
-using AButton = Android.Widget.Button;
-using AView = Android.Views.View;
 using AndroidAnimation = Android.Animation;
 
 namespace Xamarin.Forms.Platform.Android
@@ -74,13 +71,13 @@ namespace Xamarin.Forms.Platform.Android
 		protected override void OnAttachedToWindow()
 		{
 			base.OnAttachedToWindow();
-			PageController.SendAppearing();
+			PageController?.SendAppearing();
 		}
 
 		protected override void OnDetachedFromWindow()
 		{
 			base.OnDetachedFromWindow();
-			PageController.SendDisappearing();
+			PageController?.SendDisappearing();
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<NavigationPage> e)
@@ -109,7 +106,7 @@ namespace Xamarin.Forms.Platform.Android
 			newNavController.RemovePageRequested += OnRemovePageRequested;
 
 			// If there is already stuff on the stack we need to push it
-			foreach(Page page in newNavController.StackCopy.Reverse())
+			foreach (Page page in newNavController.Pages)
 			{
 				PushViewAsync(page, false);
 			}
@@ -130,7 +127,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		protected virtual Task<bool> OnPopViewAsync(Page page, bool animated)
 		{
-			Page pageToShow = ((INavigationPageController)Element).StackCopy.Skip(1).FirstOrDefault();
+			Page pageToShow = ((INavigationPageController)Element).Peek(1);
 			if (pageToShow == null)
 				return Task.FromResult(false);
 
@@ -145,12 +142,12 @@ namespace Xamarin.Forms.Platform.Android
 		void InsertPageBefore(Page page, Page before)
 		{
 
-			int index = ((IPageController)Element).InternalChildren.IndexOf(before);
+			int index = PageController.InternalChildren.IndexOf(before);
 			if (index == -1)
 				throw new InvalidOperationException("This should never happen, please file a bug");
 
 			Device.StartTimer(TimeSpan.FromMilliseconds(0), () => {
-				((Platform)Element.Platform).UpdateNavigationTitleBar();
+				((Platform)Element.Platform).UpdateActionBar();
 				return false;
 			});
 		}
@@ -183,13 +180,13 @@ namespace Xamarin.Forms.Platform.Android
 		void RemovePage(Page page)
 		{
 			IVisualElementRenderer rendererToRemove = Platform.GetRenderer(page);
-			PageContainer containerToRemove = rendererToRemove == null ? null : (PageContainer)rendererToRemove.ViewGroup.Parent;
+			PageContainer containerToRemove = rendererToRemove == null ? null : (PageContainer)rendererToRemove.View.Parent;
 
 			containerToRemove.RemoveFromParent();
 
 			if (rendererToRemove != null)
 			{
-				rendererToRemove.ViewGroup.RemoveFromParent();
+				rendererToRemove.View.RemoveFromParent();
 				rendererToRemove.Dispose();
 			}
 
@@ -197,7 +194,7 @@ namespace Xamarin.Forms.Platform.Android
 
 			Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
 			{
-				((Platform)Element.Platform).UpdateNavigationTitleBar();
+				((Platform)Element.Platform).UpdateActionBar();
 				return false;
 			});
 		}
@@ -213,8 +210,8 @@ namespace Xamarin.Forms.Platform.Android
 
 			Page pageToRemove = _current;
 			IVisualElementRenderer rendererToRemove = pageToRemove == null ? null : Platform.GetRenderer(pageToRemove);
-			PageContainer containerToRemove = rendererToRemove == null ? null : (PageContainer)rendererToRemove.ViewGroup.Parent;
-			PageContainer containerToAdd = (PageContainer)rendererToAdd.ViewGroup.Parent ?? new PageContainer(Context, rendererToAdd);
+			PageContainer containerToRemove = rendererToRemove == null ? null : (PageContainer)rendererToRemove.View.Parent;
+			PageContainer containerToAdd = (PageContainer)rendererToAdd.View.Parent ?? new PageContainer(Context, rendererToAdd);
 
 			containerToAdd.SetWindowBackground();
 

@@ -1,7 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
+using Xamarin.Forms.PlatformConfiguration.WindowsSpecific;
 
 #if WINDOWS_UWP
 
@@ -11,7 +14,7 @@ namespace Xamarin.Forms.Platform.UWP
 namespace Xamarin.Forms.Platform.WinRT
 #endif
 {
-	public sealed partial class PageControl : IToolbarProvider
+    public sealed partial class PageControl : IToolbarProvider
 	{
 		public static readonly DependencyProperty InvisibleBackButtonCollapsedProperty = DependencyProperty.Register("InvisibleBackButtonCollapsed", typeof(bool), typeof(PageControl),
 			new PropertyMetadata(true, OnInvisibleBackButtonCollapsedChanged));
@@ -19,9 +22,9 @@ namespace Xamarin.Forms.Platform.WinRT
 		public static readonly DependencyProperty ShowBackButtonProperty = DependencyProperty.Register("ShowBackButton", typeof(bool), typeof(PageControl),
 			new PropertyMetadata(false, OnShowBackButtonChanged));
 
-		public static readonly DependencyProperty ShowNavigationBarProperty = DependencyProperty.Register("ShowNavigationBar", typeof(bool), typeof(PageControl), new PropertyMetadata(true));
+		public static readonly DependencyProperty TitleVisibilityProperty = DependencyProperty.Register(nameof(TitleVisibility), typeof(Visibility), typeof(PageControl), new PropertyMetadata(Visibility.Visible));
 
-		public static readonly DependencyProperty NavigationBarBackgroundProperty = DependencyProperty.Register("NavigationBarBackground", typeof(Brush), typeof(PageControl),
+		public static readonly DependencyProperty ToolbarBackgroundProperty = DependencyProperty.Register(nameof(ToolbarBackground), typeof(Brush), typeof(PageControl),
 			new PropertyMetadata(default(Brush)));
 
 		public static readonly DependencyProperty BackButtonTitleProperty = DependencyProperty.Register("BackButtonTitle", typeof(string), typeof(PageControl), new PropertyMetadata(false));
@@ -36,10 +39,22 @@ namespace Xamarin.Forms.Platform.WinRT
 		AppBarButton _backButton;
 		CommandBar _commandBar;
 
+#if WINDOWS_UWP
+        ToolbarPlacement _toolbarPlacement;
+	    readonly ToolbarPlacementHelper _toolbarPlacementHelper = new ToolbarPlacementHelper();
+
+		public bool ShouldShowToolbar
+		{
+			get { return _toolbarPlacementHelper.ShouldShowToolBar; }
+			set { _toolbarPlacementHelper.ShouldShowToolBar = value; }
+		}
+#endif
+
 		TaskCompletionSource<CommandBar> _commandBarTcs;
 		Windows.UI.Xaml.Controls.ContentPresenter _presenter;
+	    
 
-		public PageControl()
+	    public PageControl()
 		{
 			InitializeComponent();
 		}
@@ -72,11 +87,23 @@ namespace Xamarin.Forms.Platform.WinRT
 			set { SetValue(InvisibleBackButtonCollapsedProperty, value); }
 		}
 
-		public Brush NavigationBarBackground
+		public Brush ToolbarBackground
 		{
-			get { return (Brush)GetValue(NavigationBarBackgroundProperty); }
-			set { SetValue(NavigationBarBackgroundProperty, value); }
+			get { return (Brush)GetValue(ToolbarBackgroundProperty); }
+			set { SetValue(ToolbarBackgroundProperty, value); }
 		}
+
+#if WINDOWS_UWP
+        public ToolbarPlacement ToolbarPlacement
+        {
+            get { return _toolbarPlacement; }
+            set
+            {
+                _toolbarPlacement = value; 
+                _toolbarPlacementHelper.UpdateToolbarPlacement();
+            }
+        }
+#endif
 
 		public bool ShowBackButton
 		{
@@ -84,10 +111,10 @@ namespace Xamarin.Forms.Platform.WinRT
 			set { SetValue(ShowBackButtonProperty, value); }
 		}
 
-		public bool ShowNavigationBar
+		public Visibility TitleVisibility
 		{
-			get { return (bool)GetValue(ShowNavigationBarProperty); }
-			set { SetValue(ShowNavigationBarProperty, value); }
+			get { return (Visibility)GetValue(TitleVisibilityProperty); }
+			set { SetValue(TitleVisibilityProperty, value); }
 		}
 
 		public Brush TitleBrush
@@ -126,11 +153,12 @@ namespace Xamarin.Forms.Platform.WinRT
 
 			_commandBar = GetTemplateChild("CommandBar") as CommandBar;
 
+#if WINDOWS_UWP
+			_toolbarPlacementHelper.Initialize(_commandBar, () => ToolbarPlacement, GetTemplateChild);
+#endif
+
 			TaskCompletionSource<CommandBar> tcs = _commandBarTcs;
-			if (tcs != null)
-			{
-				tcs.SetResult(_commandBar);
-			}
+		    tcs?.SetResult(_commandBar);
 		}
 
 		void OnBackClicked(object sender, RoutedEventArgs e)
@@ -162,5 +190,5 @@ namespace Xamarin.Forms.Platform.WinRT
 
 			_backButton.Opacity = ShowBackButton ? 1 : 0;
 		}
-	}
+    }
 }

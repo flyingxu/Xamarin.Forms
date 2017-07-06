@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using Xamarin.Forms.Internals;
 using Xamarin.Forms.Xaml.Internals;
 
 namespace Xamarin.Forms.Xaml
@@ -20,20 +21,10 @@ namespace Xamarin.Forms.Xaml
 			get { return Context.Values; }
 		}
 
-		public bool VisitChildrenFirst
-		{
-			get { return false; }
-		}
-
-		public bool StopOnDataTemplate
-		{
-			get { return true; }
-		}
-
-		public bool StopOnResourceDictionary
-		{
-			get { return false; }
-		}
+		public TreeVisitingMode VisitingMode => TreeVisitingMode.TopDown;
+		public bool StopOnDataTemplate => true;
+		public bool StopOnResourceDictionary => false;
+		public bool VisitNodeOnDataTemplate => false;
 
 		public void Visit(ValueNode node, INode parentNode)
 		{
@@ -48,11 +39,8 @@ namespace Xamarin.Forms.Xaml
 				if (parentElement.SkipPrefix(node.NamespaceResolver.LookupPrefix(propertyName.NamespaceURI)))
 					return;
 				if (propertyName.NamespaceURI == "http://schemas.openxmlformats.org/markup-compatibility/2006" &&
-					propertyName.LocalName == "Ignorable") {
-					(parentNode.IgnorablePrefixes ?? (parentNode.IgnorablePrefixes = new List<string> ())).AddRange (
-						(value as string).Split (','));
+					propertyName.LocalName == "Ignorable") 
 					return;
-				}
 				if (propertyName.LocalName != "MergedWith")
 					return;
 				ApplyPropertiesVisitor.SetPropertyValue(source, propertyName, value, Context.RootElement, node, Context, node);
@@ -66,9 +54,6 @@ namespace Xamarin.Forms.Xaml
 
 		public void Visit(ElementNode node, INode parentNode)
 		{
-			if (node.SkipPrefix(node.NamespaceResolver.LookupPrefix(node.NamespaceURI)))
-				return;
-
 			var value = Values[node];
 			var parentElement = parentNode as IElementNode;
 			var markupExtension = value as IMarkupExtension;

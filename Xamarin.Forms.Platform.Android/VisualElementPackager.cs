@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Xamarin.Forms.Internals;
+using Android.Views;
 using AView = Android.Views.View;
 
 namespace Xamarin.Forms.Platform.Android
@@ -33,8 +35,15 @@ namespace Xamarin.Forms.Platform.Android
 
 		public void Dispose()
 		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
 			if (_disposed)
 				return;
+
 			_disposed = true;
 
 			if (_renderer != null)
@@ -45,10 +54,13 @@ namespace Xamarin.Forms.Platform.Android
 					_childViews = null;
 				}
 
-				_renderer.Element.ChildAdded -= _childAddedHandler;
-				_renderer.Element.ChildRemoved -= _childRemovedHandler;
+				if (_renderer.Element != null)
+				{
+					_renderer.Element.ChildAdded -= _childAddedHandler;
+					_renderer.Element.ChildRemoved -= _childRemovedHandler;
 
-				_renderer.Element.ChildrenReordered -= _childReorderedHandler;
+					_renderer.Element.ChildrenReordered -= _childReorderedHandler;
+				}
 				_renderer = null;
 			}
 		}
@@ -88,7 +100,7 @@ namespace Xamarin.Forms.Platform.Android
 			Performance.Start("Add view");
 			if (!sameChildren)
 			{
-				_renderer.ViewGroup.AddView(renderer.ViewGroup);
+				(_renderer.View as ViewGroup)?.AddView(renderer.View);
 				_childViews.Add(renderer);
 			}
 			Performance.Stop("Add view");
@@ -105,7 +117,7 @@ namespace Xamarin.Forms.Platform.Android
 				if (element != null)
 				{
 					IVisualElementRenderer r = Platform.GetRenderer(element);
-					_renderer.ViewGroup.BringChildToFront(r.ViewGroup);
+					(_renderer.View as ViewGroup)?.BringChildToFront(r.View);
 				}
 			}
 		}
@@ -139,7 +151,7 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			IVisualElementRenderer renderer = Platform.GetRenderer(view);
 			_childViews.Remove(renderer);
-			renderer.ViewGroup.RemoveFromParent();
+			renderer.View.RemoveFromParent();
 			renderer.Dispose();
 		}
 

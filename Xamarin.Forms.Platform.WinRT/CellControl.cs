@@ -42,9 +42,8 @@ namespace Xamarin.Forms.Platform.WinRT
 
 			Unloaded += (sender, args) =>
 			{
-				ICellController cell = Cell;
-				if (cell != null)
-					cell.SendDisappearing();
+				if (Cell != null)
+					Cell.SendDisappearing();
 			};
 
 			_propertyChangedHandler = OnCellPropertyChanged;
@@ -97,7 +96,9 @@ namespace Xamarin.Forms.Platform.WinRT
 					}
 				}
 
-				return new Windows.Foundation.Size(0, 0);
+				// This needs to return a size with a non-zero height; 
+				// otherwise, it kills virtualization.
+				return new Windows.Foundation.Size(0, Cell.DefaultCellHeight);
 			}
 
 			// Children still need measure called on them
@@ -215,31 +216,31 @@ namespace Xamarin.Forms.Platform.WinRT
 			{
 				bool isGroupHeader = IsGroupHeader;
 				DataTemplate template = isGroupHeader ? lv.GroupHeaderTemplate : lv.ItemTemplate;
+				object bindingContext = newContext;
 
 				if (template is DataTemplateSelector)
 				{
-					template = ((DataTemplateSelector)template).SelectTemplate(newContext, lv);
+					template = ((DataTemplateSelector)template).SelectTemplate(bindingContext, lv);
 				}
 
 				if (template != null)
 				{
 					cell = template.CreateContent() as Cell;
-					cell.BindingContext = newContext;
 				}
 				else
 				{
-					IListViewController listViewController = lv;
-					var defaultContext = newContext;
-
 					if (isGroupHeader)
-						defaultContext = listViewController.GetDisplayTextFromGroup(newContext);
+						bindingContext = lv.GetDisplayTextFromGroup(bindingContext);
 
-					cell = listViewController.CreateDefaultCell(defaultContext);
+					cell = lv.CreateDefaultCell(bindingContext);
 				}
 
 				// A TableView cell should already have its parent,
 				// but we need to set the parent for a ListView cell.
 				cell.Parent = lv;
+
+				// Set inherited BindingContext after setting the Parent so it won't be wiped out
+				BindableObject.SetInheritedBindingContext(cell, bindingContext);
 
 				// This provides the Group Header styling (e.g., larger font, etc.) when the
 				// template is loaded later.
@@ -254,12 +255,12 @@ namespace Xamarin.Forms.Platform.WinRT
 			if (oldCell != null)
 			{
 				oldCell.PropertyChanged -= _propertyChangedHandler;
-				((ICellController)oldCell).SendDisappearing();
+				oldCell.SendDisappearing();
 			}
 
 			if (newCell != null)
 			{
-				((ICellController)newCell).SendAppearing();
+				newCell.SendAppearing();
 
 				UpdateContent(newCell);
 				SetupContextMenu();

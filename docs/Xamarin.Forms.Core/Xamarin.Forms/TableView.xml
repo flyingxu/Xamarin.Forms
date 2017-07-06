@@ -1,6 +1,6 @@
 <Type Name="TableView" FullName="Xamarin.Forms.TableView">
-  <TypeSignature Language="C#" Value="public class TableView : Xamarin.Forms.View, Xamarin.Forms.ITableViewController" />
-  <TypeSignature Language="ILAsm" Value=".class public auto ansi beforefieldinit TableView extends Xamarin.Forms.View implements class Xamarin.Forms.ITableViewController" />
+  <TypeSignature Language="C#" Value="public class TableView : Xamarin.Forms.View, Xamarin.Forms.IElementConfiguration&lt;Xamarin.Forms.TableView&gt;, Xamarin.Forms.ITableViewController" />
+  <TypeSignature Language="ILAsm" Value=".class public auto ansi beforefieldinit TableView extends Xamarin.Forms.View implements class Xamarin.Forms.IElementConfiguration`1&lt;class Xamarin.Forms.TableView&gt;, class Xamarin.Forms.ITableViewController" />
   <AssemblyInfo>
     <AssemblyName>Xamarin.Forms.Core</AssemblyName>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -15,6 +15,9 @@
     <BaseTypeName>Xamarin.Forms.View</BaseTypeName>
   </Base>
   <Interfaces>
+    <Interface>
+      <InterfaceName>Xamarin.Forms.IElementConfiguration&lt;Xamarin.Forms.TableView&gt;</InterfaceName>
+    </Interface>
     <Interface>
       <InterfaceName>Xamarin.Forms.ITableViewController</InterfaceName>
     </Interface>
@@ -141,7 +144,7 @@ public class App : Application
         <Parameter Name="root" Type="Xamarin.Forms.TableRoot" />
       </Parameters>
       <Docs>
-        <param name="root">To be added.</param>
+        <param name="root">The root of the table view.</param>
         <summary>Initializes a new <see cref="T:Xamarin.Forms.TableView" /> instance.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -216,6 +219,72 @@ public class App : Application
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
+    <Member MemberName="Model">
+      <MemberSignature Language="C#" Value="public Xamarin.Forms.Internals.TableModel Model { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class Xamarin.Forms.Internals.TableModel Model" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.Internals.TableModel</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="ModelChanged">
+      <MemberSignature Language="C#" Value="public event EventHandler ModelChanged;" />
+      <MemberSignature Language="ILAsm" Value=".event class System.EventHandler ModelChanged" />
+      <MemberType>Event</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.EventHandler</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="On&lt;T&gt;">
+      <MemberSignature Language="C#" Value="public Xamarin.Forms.IPlatformElementConfiguration&lt;T,Xamarin.Forms.TableView&gt; On&lt;T&gt; () where T : Xamarin.Forms.IConfigPlatform;" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance class Xamarin.Forms.IPlatformElementConfiguration`2&lt;!!T, class Xamarin.Forms.TableView&gt; On&lt;(class Xamarin.Forms.IConfigPlatform) T&gt;() cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.IPlatformElementConfiguration&lt;T,Xamarin.Forms.TableView&gt;</ReturnType>
+      </ReturnValue>
+      <TypeParameters>
+        <TypeParameter Name="T">
+          <Constraints>
+            <InterfaceName>Xamarin.Forms.IConfigPlatform</InterfaceName>
+          </Constraints>
+        </TypeParameter>
+      </TypeParameters>
+      <Parameters />
+      <Docs>
+        <typeparam name="T">To be added.</typeparam>
+        <summary>Returns the platform-specific instance of this <see cref="T:Xamarin.Forms.TableView" />, on which a platform-specific method may be called.</summary>
+        <returns>To be added.</returns>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="OnBindingContextChanged">
       <MemberSignature Language="C#" Value="protected override void OnBindingContextChanged ();" />
       <MemberSignature Language="ILAsm" Value=".method familyhidebysig virtual instance void OnBindingContextChanged() cil managed" />
@@ -272,7 +341,7 @@ public class App : Application
       </AssemblyInfo>
       <Attributes>
         <Attribute>
-          <AttributeName>System.Obsolete("Use OnMeasure")</AttributeName>
+          <AttributeName>System.Obsolete("OnSizeRequest is obsolete as of version 2.2.0. Please use OnMeasure instead.")</AttributeName>
         </Attribute>
       </Attributes>
       <ReturnValue>
@@ -283,8 +352,8 @@ public class App : Application
         <Parameter Name="heightConstraint" Type="System.Double" />
       </Parameters>
       <Docs>
-        <param name="widthConstraint">To be added.</param>
-        <param name="heightConstraint">To be added.</param>
+        <param name="widthConstraint">The width constraint of the size request.</param>
+        <param name="heightConstraint">The height constraint of the size request.</param>
         <summary>Method that is called when a size request is made.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
@@ -366,7 +435,7 @@ public class App : Application
         <ReturnType>Xamarin.Forms.ITableModel</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
+        <summary>Internal.</summary>
         <value>To be added.</value>
         <remarks>To be added.</remarks>
       </Docs>

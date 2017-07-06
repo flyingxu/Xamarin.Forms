@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
+using Xamarin.Forms.Internals;
 
 #if WINDOWS_UWP
 
@@ -10,9 +12,14 @@ namespace Xamarin.Forms.Platform.UWP
 namespace Xamarin.Forms.Platform.WinRT
 #endif
 {
-	public class EditorRenderer : ViewRenderer<Editor, TextBox>
+	public class EditorRenderer : ViewRenderer<Editor, FormsTextBox>
 	{
 		bool _fontApplied;
+		Brush _backgroundColorFocusedDefaultBrush;
+		Brush _textDefaultBrush;
+		Brush _defaultTextColorFocusBrush;
+
+		IEditorController ElementController => Element;
 
 		protected override void OnElementChanged(ElementChangedEventArgs<Editor> e)
 		{
@@ -20,7 +27,12 @@ namespace Xamarin.Forms.Platform.WinRT
 			{
 				if (Control == null)
 				{
-					var textBox = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
+					var textBox = new FormsTextBox
+					{
+						AcceptsReturn = true,
+						TextWrapping = TextWrapping.Wrap,
+						Style = Windows.UI.Xaml.Application.Current.Resources["FormsTextBoxStyle"] as Windows.UI.Xaml.Style
+					};
 
 					SetNativeControl(textBox);
 
@@ -50,6 +62,8 @@ namespace Xamarin.Forms.Platform.WinRT
 
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
+			base.OnElementPropertyChanged(sender, e);
+
 			if (e.PropertyName == Editor.TextColorProperty.PropertyName)
 			{
 				UpdateTextColor();
@@ -70,13 +84,25 @@ namespace Xamarin.Forms.Platform.WinRT
 			{
 				UpdateText();
 			}
-
-			base.OnElementPropertyChanged(sender, e);
 		}
 
 		void OnLostFocus(object sender, RoutedEventArgs e)
 		{
-			Element.SendCompleted();
+			ElementController.SendCompleted();
+		}
+
+		protected override void UpdateBackgroundColor()
+		{
+			base.UpdateBackgroundColor();
+
+			if (Control == null)
+			{
+				return;
+			}
+
+			// By default some platforms have alternate default background colors when focused
+			BrushHelpers.UpdateColor(Element.BackgroundColor, ref _backgroundColorFocusedDefaultBrush,
+				() => Control.BackgroundFocusBrush, brush => Control.BackgroundFocusBrush = brush);
 		}
 
 		void OnNativeTextChanged(object sender, Windows.UI.Xaml.Controls.TextChangedEventArgs args)
@@ -152,15 +178,11 @@ namespace Xamarin.Forms.Platform.WinRT
 		{
 			Color textColor = Element.TextColor;
 
-			if (textColor.IsDefault || !Element.IsEnabled)
-			{
-				// ReSharper disable once AccessToStaticMemberViaDerivedType
-				Control.ClearValue(TextBox.ForegroundProperty);
-			}
-			else
-			{
-				Control.Foreground = textColor.ToBrush();
-			}
+			BrushHelpers.UpdateColor(textColor, ref _textDefaultBrush,
+				() => Control.Foreground, brush => Control.Foreground = brush);
+
+			BrushHelpers.UpdateColor(textColor, ref _defaultTextColorFocusBrush,
+				() => Control.ForegroundFocusBrush, brush => Control.ForegroundFocusBrush = brush);
 		}
 	}
 }

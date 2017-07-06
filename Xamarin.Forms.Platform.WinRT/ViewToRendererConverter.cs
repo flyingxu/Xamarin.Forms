@@ -37,9 +37,11 @@ namespace Xamarin.Forms.Platform.WinRT
 			throw new NotSupportedException();
 		}
 
-		class WrapperControl : ContentControl
+		class WrapperControl : Canvas
 		{
 			readonly View _view;
+
+			FrameworkElement FrameworkElement { get; }
 
 			public WrapperControl(View view)
 			{
@@ -49,14 +51,21 @@ namespace Xamarin.Forms.Platform.WinRT
 				IVisualElementRenderer renderer = Platform.CreateRenderer(view);
 				Platform.SetRenderer(view, renderer);
 
-				NotifyWrapperAwareDescendants(view, renderer);
-
-				Content = renderer.ContainerElement;
+				FrameworkElement = renderer.ContainerElement;
+				Children.Add(renderer.ContainerElement);
 
 				// make sure we re-measure once the template is applied
-				FrameworkElement frameworkElement = renderer.ContainerElement;
-				if (frameworkElement != null)
-					frameworkElement.Loaded += (sender, args) => InvalidateMeasure();
+				if (FrameworkElement != null)
+				{
+					FrameworkElement.Loaded += (sender, args) =>
+					{
+						// If the view is a layout (stacklayout, grid, etc) we need to trigger a layout pass
+						// with all the controls in a consistent native state (i.e., loaded) so they'll actually
+						// have Bounds set
+						(_view as Layout)?.ForceLayout();
+						InvalidateMeasure();
+					};
+				}
 			}
 
 			protected override Windows.Foundation.Size ArrangeOverride(Windows.Foundation.Size finalSize)
@@ -65,18 +74,15 @@ namespace Xamarin.Forms.Platform.WinRT
 				Layout.LayoutChildIntoBoundingRegion(_view, new Rectangle(0, 0, finalSize.Width, finalSize.Height));
 				_view.IsInNativeLayout = false;
 
-				var content = Content as FrameworkElement;
-				content.Arrange(new Rect(_view.X, _view.Y, _view.Width, _view.Height));
+				FrameworkElement?.Arrange(new Rect(_view.X, _view.Y, _view.Width, _view.Height));
 				return finalSize;
 			}
 
 			protected override Windows.Foundation.Size MeasureOverride(Windows.Foundation.Size availableSize)
 			{
-				var content = Content as FrameworkElement;
-				content?.Measure(availableSize);
 				Size request = _view.Measure(availableSize.Width, availableSize.Height, MeasureFlags.IncludeMargins).Request;
-
-				var result = new Windows.Foundation.Size();
+				
+				Windows.Foundation.Size result;
 				if (_view.HorizontalOptions.Alignment == LayoutAlignment.Fill && !double.IsInfinity(availableSize.Width) && availableSize.Width != 0)
 				{
 					result = new Windows.Foundation.Size(availableSize.Width, request.Height);
@@ -86,27 +92,11 @@ namespace Xamarin.Forms.Platform.WinRT
 					result = new Windows.Foundation.Size(request.Width, request.Height);
 				}
 
-				_view.Layout(new Rectangle(0, 0, result.Width, result.Width));
+				_view.Layout(new Rectangle(0, 0, result.Width, result.Height)); 
+
+				FrameworkElement?.Measure(availableSize);
+				
 				return result;
-			}
-
-			void NotifyWrapperAwareDescendants(Element currentView, IVisualElementRenderer currentRenderer)
-			{
-				// If any of the child renderers need to handle anything differently because they're in 
-				// a wrapper in a list view, let them know that they're being wrapped
-				var wrapperAwareRenderer = currentRenderer as IWrapperAware;
-				wrapperAwareRenderer?.NotifyWrapped();
-
-				foreach (Element child in ((IElementController)currentView).LogicalChildren)
-				{
-					var childView = child as View;
-					if (childView == null)
-					{
-						continue;
-					}
-
-					NotifyWrapperAwareDescendants(childView, Platform.GetRenderer(childView));
-				}
 			}
 		}
 	}

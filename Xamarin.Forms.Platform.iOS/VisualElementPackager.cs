@@ -1,12 +1,11 @@
 using System;
-#if __UNIFIED__
-using UIKit;
 
-#else
-using MonoTouch.UIKit;
-#endif
-
+#if __MOBILE__
 namespace Xamarin.Forms.Platform.iOS
+#else
+
+namespace Xamarin.Forms.Platform.MacOS
+#endif
 {
 	public class VisualElementPackager : IDisposable
 	{
@@ -19,7 +18,7 @@ namespace Xamarin.Forms.Platform.iOS
 		public VisualElementPackager(IVisualElementRenderer renderer)
 		{
 			if (renderer == null)
-				throw new ArgumentNullException("renderer");
+				throw new ArgumentNullException(nameof(renderer));
 
 			Renderer = renderer;
 			renderer.ElementChanged += OnRendererElementChanged;
@@ -106,8 +105,9 @@ namespace Xamarin.Forms.Platform.iOS
 					continue;
 
 				var nativeControl = childRenderer.NativeView;
-
+#if __MOBILE__
 				Renderer.NativeView.BringSubviewToFront(nativeControl);
+#endif
 				nativeControl.Layer.ZPosition = z * 1000;
 			}
 		}

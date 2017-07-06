@@ -11,7 +11,9 @@
   <Interfaces />
   <Docs>
     <summary>A collection of styles and properties that can be added to an element at run time.</summary>
-    <remarks><para>Effects are suitable when the developer needs to use platform-specific features to achieve the desired effect. Developers should consider using <see cref="T:Xamarin.Forms.Behavior" /> if they do not need platform-specific implentations to achieve their desired result.</para></remarks>
+    <remarks>
+      <para>Effects are suitable when the developer needs to use platform-specific features to achieve the desired effect. Developers should consider using <see cref="T:Xamarin.Forms.Behavior" /> if they do not need platform-specific implentations to achieve their desired result.</para>
+    </remarks>
   </Docs>
   <Members>
     <Member MemberName="Element">
@@ -92,7 +94,7 @@
         <Parameter Name="name" Type="System.String" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
+        <param name="name">The name of the effect to get.</param>
         <summary>Returns an <see cref="T:Xamarin.Forms.Effect" /> for the specified name, which is of the form <c>ResolutionGroupName.ExportEffect</c>.</summary>
         <returns>The uniquely identified effect.</returns>
         <remarks>The <see cref="T:Xamarin.Forms.Effect.Resolve" /> method takes a string that is the concatenation of a resolution group name (supplied to <see cref="T:Xamarin.Forms.ResolutionGroupNameAttribute" />), <c>'.'</c>, and the unique name that was supplied to <see cref="T:Xamarin.Forms.ExportEffectAttribute" />, and returns the specified effect.</remarks>

@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Windows.Media.Imaging;
 using Microsoft.Phone.Controls;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms.Platform.WinPhone
 {
@@ -72,8 +73,9 @@ namespace Xamarin.Forms.Platform.WinPhone
 				var weakRef = new WeakReference(hubTile);
 				SizeChanged += (sender, args) =>
 				{
-					if (weakRef.IsAlive)
-						((HubTile)weakRef.Target).Size = GetSize();
+					var hTile = (HubTile)weakRef.Target;
+					if (hTile != null)
+						hTile.Size = GetSize();
 					((IVisualElementController)Element).NativeSizeChanged();
 				};
 

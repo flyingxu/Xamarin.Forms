@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Android.Support.V4.Widget;
 using Android.Views;
 using Android.Support.V4.App;
+using AView = Android.Views.View;
 
 namespace Xamarin.Forms.Platform.Android.AppCompat
 {
@@ -87,6 +88,12 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 			remove { ElementChanged -= value; }
 		}
 
+		event EventHandler<PropertyChangedEventArgs> IVisualElementRenderer.ElementPropertyChanged
+		{
+			add { ElementPropertyChanged += value; }
+			remove { ElementPropertyChanged -= value; }
+		}
+
 		SizeRequest IVisualElementRenderer.GetDesiredSize(int widthConstraint, int heightConstraint)
 		{
 			Measure(widthConstraint, heightConstraint);
@@ -106,23 +113,17 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 				oldElement.Disappearing -= MasterDetailPageDisappearing;
 			}
 
-			var statusBarHeight = 0;
-			if (Forms.IsLollipopOrNewer)
-				statusBarHeight = ((FormsAppCompatActivity)Context).GetStatusBarHeight();
-
 			if (newElement != null)
 			{
 				if (_detailLayout == null)
 				{
 					_detailLayout = new MasterDetailContainer(newElement, false, Context)
 					{
-						TopPadding = statusBarHeight,
 						LayoutParameters = new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent)
 					};
 
 					_masterLayout = new MasterDetailContainer(newElement, true, Context)
 					{
-						TopPadding = ((IMasterDetailPageController)newElement).ShouldShowSplitMode ? statusBarHeight : 0,
 						LayoutParameters = new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent) { Gravity = (int)GravityFlags.Start }
 					};
 
@@ -165,6 +166,10 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 				_tracker = new VisualElementTracker(this);
 		}
 
+		void IVisualElementRenderer.SetLabelFor(int? id)
+		{
+		}
+
 		VisualElementTracker IVisualElementRenderer.Tracker => _tracker;
 
 		void IVisualElementRenderer.UpdateLayout()
@@ -173,6 +178,8 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		}
 
 		ViewGroup IVisualElementRenderer.ViewGroup => this;
+
+		AView IVisualElementRenderer.View => this;
 
 		protected override void Dispose(bool disposing)
 		{
@@ -188,17 +195,21 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 				if (_detailLayout != null)
 				{
+					RemoveView(_detailLayout);
 					_detailLayout.Dispose();
 					_detailLayout = null;
 				}
 
 				if (_masterLayout != null)
 				{
+					RemoveView(_masterLayout);
 					_masterLayout.Dispose();
 					_masterLayout = null;
 				}
 
 				Device.Info.PropertyChanged -= DeviceInfoPropertyChanged;
+
+				RemoveDrawerListener(this);
 
 				if (Element != null)
 				{
@@ -206,6 +217,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 					Element.PropertyChanged -= HandlePropertyChanged;
 					Element.Appearing -= MasterDetailPageAppearing;
 					Element.Disappearing -= MasterDetailPageDisappearing;
+
 					Element.ClearValue(Android.Platform.RendererProperty);
 					Element = null;
 				}
@@ -257,6 +269,17 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		}
 
 		event EventHandler<VisualElementChangedEventArgs> ElementChanged;
+		event EventHandler<PropertyChangedEventArgs> ElementPropertyChanged;
+
+		bool HasAncestorNavigationPage(Element element)
+		{
+			if (element.Parent == null)
+				return false;
+			else if (element.Parent is NavigationPage)
+				return true;
+			else
+				return HasAncestorNavigationPage(element.Parent);
+		}
 
 		void HandleMasterPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
@@ -264,6 +287,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 		void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
+			ElementPropertyChanged?.Invoke(this, e);
 			if (e.PropertyName == "Master")
 				UpdateMaster();
 			else if (e.PropertyName == "Detail")

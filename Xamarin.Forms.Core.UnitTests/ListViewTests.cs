@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NUnit.Framework;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms.Core.UnitTests
 {
@@ -84,6 +85,43 @@ namespace Xamarin.Forms.Core.UnitTests
 			Assert.That (cell, Is.Not.Null);
 			Assert.That (cell, Is.InstanceOf<TextCell>());
 			Assert.That (((TextCell) cell).Text, Is.Null);
+		}
+
+		[Test]
+		[Description("Setting BindingContext should trickle down to Header and Footer.")]
+		public void SettingBindingContextPassesToHeaderAndFooter()
+		{
+			var bc = new object();
+			var header = new BoxView();
+			var footer = new BoxView();
+			var listView = new ListView
+			{
+				Header = header,
+				Footer = footer,
+				BindingContext = bc,
+			};
+
+			Assert.That(header.BindingContext, Is.SameAs(bc));
+			Assert.That(footer.BindingContext, Is.SameAs(bc));
+		}
+
+		[Test]
+		[Description("Setting Header and Footer should pass BindingContext.")]
+		public void SettingHeaderFooterPassesBindingContext()
+		{
+			var bc = new object();
+			var listView = new ListView
+			{
+				BindingContext = bc,
+			};
+
+			var header = new BoxView();
+			var footer = new BoxView();
+			listView.Footer = footer;
+			listView.Header = header;
+
+			Assert.That(header.BindingContext, Is.SameAs(bc));
+			Assert.That(footer.BindingContext, Is.SameAs(bc));
 		}
 
 		[Test]
@@ -1435,20 +1473,21 @@ namespace Xamarin.Forms.Core.UnitTests
 			Assert.That (cell.Parent, Is.Null);
 		}
 
-		[TestCase (TargetPlatform.Android, ListViewCachingStrategy.RecycleElement)]
-		[TestCase (TargetPlatform.iOS, ListViewCachingStrategy.RecycleElement)]
-		[TestCase (TargetPlatform.Windows, ListViewCachingStrategy.RetainElement)]
-		[TestCase (TargetPlatform.Other, ListViewCachingStrategy.RetainElement)]
-		[TestCase (TargetPlatform.WinPhone, ListViewCachingStrategy.RetainElement)]
-		public void EnforcesCachingStrategy (TargetPlatform platform, ListViewCachingStrategy expected)
+		[TestCase (Device.Android, ListViewCachingStrategy.RecycleElement)]
+		[TestCase (Device.iOS, ListViewCachingStrategy.RecycleElement)]
+		[TestCase (Device.WinRT, ListViewCachingStrategy.RetainElement)]
+		[TestCase(Device.UWP, ListViewCachingStrategy.RetainElement)]
+		[TestCase ("Other", ListViewCachingStrategy.RetainElement)]
+		[TestCase (Device.WinPhone, ListViewCachingStrategy.RetainElement)]
+		public void EnforcesCachingStrategy (string platform, ListViewCachingStrategy expected)
 		{
-			var oldOS = Device.OS;
+			var oldOS = Device.RuntimePlatform;
 			// we need to do this because otherwise we cant set the caching strategy
-			Device.OS = platform;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = platform;
 			var listView = new ListView (ListViewCachingStrategy.RecycleElement);
 
 			Assert.AreEqual (expected, listView.CachingStrategy);
-			Device.OS = oldOS;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = oldOS;
 		}
 
 		[Test]
@@ -1467,9 +1506,9 @@ namespace Xamarin.Forms.Core.UnitTests
 				"Bar"
 			};
 
-			var oldOS = Device.OS;
+			var oldOS = Device.RuntimePlatform;
 			// we need to do this because otherwise we cant set the caching strategy
-			Device.OS = TargetPlatform.Android;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.Android;
 
 			var bindable = new ListView (ListViewCachingStrategy.RecycleElement);
 			bindable.ItemTemplate = new DataTemplate (typeof (TextCell)) {
@@ -1484,7 +1523,7 @@ namespace Xamarin.Forms.Core.UnitTests
 
 			Assert.False(ReferenceEquals (item1, item2));
 
-			Device.OS = oldOS;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = oldOS;
 		}
 	}
 }

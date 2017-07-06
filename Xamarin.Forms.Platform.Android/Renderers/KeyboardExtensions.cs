@@ -1,8 +1,9 @@
 using Android.Text;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms.Platform.Android
 {
-	internal static class KeyboardExtensions
+	public static class KeyboardExtensions
 	{
 		public static InputTypes ToInputType(this Keyboard self)
 		{
@@ -20,7 +21,7 @@ namespace Xamarin.Forms.Platform.Android
 			else if (self == Keyboard.Email)
 				result = InputTypes.ClassText | InputTypes.TextVariationEmailAddress;
 			else if (self == Keyboard.Numeric)
-				result = InputTypes.ClassNumber | InputTypes.NumberFlagDecimal;
+				result = InputTypes.ClassNumber | InputTypes.NumberFlagDecimal | InputTypes.NumberFlagSigned;
 			else if (self == Keyboard.Telephone)
 				result = InputTypes.ClassPhone;
 			else if (self == Keyboard.Text)

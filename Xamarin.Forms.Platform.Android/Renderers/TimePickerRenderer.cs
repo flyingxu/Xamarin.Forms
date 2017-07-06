@@ -3,6 +3,7 @@ using System.ComponentModel;
 using Android.App;
 using Android.Content.Res;
 using Android.Widget;
+using Android.Text.Format;
 using ADatePicker = Android.Widget.DatePicker;
 using ATimePicker = Android.Widget.TimePicker;
 using Object = Java.Lang.Object;
@@ -34,13 +35,18 @@ namespace Xamarin.Forms.Platform.Android
 			_dialog = null;
 		}
 
+		protected override EditText CreateNativeControl()
+		{
+			return new EditText(Context) { Focusable = false, Clickable = true, Tag = this };
+		}
+
 		protected override void OnElementChanged(ElementChangedEventArgs<TimePicker> e)
 		{
 			base.OnElementChanged(e);
 
 			if (e.OldElement == null)
 			{
-				var textField = new EditText(Context) { Focusable = false, Clickable = true, Tag = this };
+				var textField = CreateNativeControl();
 
 				textField.SetOnClickListener(TimePickerListener.Instance);
 				SetNativeControl(textField);
@@ -87,7 +93,8 @@ namespace Xamarin.Forms.Platform.Android
 			TimePicker view = Element;
 			ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, true);
 
-			_dialog = new TimePickerDialog(Context, this, view.Time.Hours, view.Time.Minutes, false);
+			bool is24HourFormat = DateFormat.Is24HourFormat(Context);
+			_dialog = new TimePickerDialog(Context, this, view.Time.Hours, view.Time.Minutes, is24HourFormat);
 
 			if (Forms.IsLollipopOrNewer)
 				_dialog.CancelEvent += OnCancelButtonClicked;

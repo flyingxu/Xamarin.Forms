@@ -1,5 +1,7 @@
 using System;
 using System.Reflection;
+using System.Xml;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms.Xaml
 {
@@ -11,55 +13,54 @@ namespace Xamarin.Forms.Xaml
 		public object ProvideValue(IServiceProvider serviceProvider)
 		{
 			if (serviceProvider == null)
-				throw new ArgumentNullException("serviceProvider");
-			if (Key == null)
-			{
-				var lineInfoProvider = serviceProvider.GetService(typeof (IXmlLineInfoProvider)) as IXmlLineInfoProvider;
+				throw new ArgumentNullException(nameof(serviceProvider));
+			if (Key == null) {
+				var lineInfoProvider = serviceProvider.GetService(typeof(IXmlLineInfoProvider)) as IXmlLineInfoProvider;
 				var lineInfo = (lineInfoProvider != null) ? lineInfoProvider.XmlLineInfo : new XmlLineInfo();
 				throw new XamlParseException("you must specify a key in {StaticResource}", lineInfo);
 			}
-			var valueProvider = serviceProvider.GetService(typeof (IProvideValueTarget)) as IProvideParentValues;
+			var valueProvider = serviceProvider.GetService(typeof(IProvideValueTarget)) as IProvideParentValues;
 			if (valueProvider == null)
 				throw new ArgumentException();
-			var xmlLineInfoProvider = serviceProvider.GetService(typeof (IXmlLineInfoProvider)) as IXmlLineInfoProvider;
+			var xmlLineInfoProvider = serviceProvider.GetService(typeof(IXmlLineInfoProvider)) as IXmlLineInfoProvider;
 			var xmlLineInfo = xmlLineInfoProvider != null ? xmlLineInfoProvider.XmlLineInfo : null;
+			object resource = null;
 
-			foreach (var p in valueProvider.ParentObjects)
-			{
+			foreach (var p in valueProvider.ParentObjects) {
 				var ve = p as VisualElement;
 				var resDict = ve?.Resources ?? p as ResourceDictionary;
 				if (resDict == null)
 					continue;
-				object res;
-				if (resDict.TryGetValue(Key, out res))
-				{
-					return ConvertCompiledOnPlatform(res);
+				if (resDict.TryGetValue(Key, out resource))
+					break;
+			}
+			resource = resource ?? GetApplicationLevelResource(Key, xmlLineInfo);
+
+			var bp = valueProvider.TargetProperty as BindableProperty;
+			var pi = valueProvider.TargetProperty as PropertyInfo;
+			var propertyType = bp?.ReturnType ?? pi?.PropertyType;
+			if (propertyType == null) {
+				if (resource.GetType().GetTypeInfo().IsGenericType && (resource.GetType().GetGenericTypeDefinition() == typeof(OnPlatform<>) || resource.GetType().GetGenericTypeDefinition() == typeof(OnIdiom<>))) {
+					// This is only there to support our backward compat story with pre 2.3.3 compiled Xaml project who was not providing TargetProperty
+					var method = resource.GetType().GetRuntimeMethod("op_Implicit", new[] { resource.GetType() });
+					resource = method.Invoke(resource, new[] { resource });
 				}
+				return resource;
 			}
-			if (Application.Current != null && Application.Current.Resources != null &&
-			    Application.Current.Resources.ContainsKey(Key))
-			{
-				var resource = Application.Current.Resources[Key];
+			if (propertyType.IsAssignableFrom(resource.GetType()))
+				return resource;
+			var implicit_op = resource.GetType().GetRuntimeMethod("op_Implicit", new [] { resource.GetType() });
+			if (implicit_op != null && propertyType.IsAssignableFrom(implicit_op.ReturnType))
+				return implicit_op.Invoke(resource, new [] { resource });
 
-				return ConvertCompiledOnPlatform(resource);
-			}
-
-			throw new XamlParseException($"StaticResource not found for key {Key}", xmlLineInfo);
+			return resource;
 		}
 
-		static object ConvertCompiledOnPlatform(object resource)
+		internal object GetApplicationLevelResource(string key, IXmlLineInfo xmlLineInfo)
 		{
-			var actualType = resource.GetType();
-			if (actualType.GetTypeInfo().IsGenericType && actualType.GetGenericTypeDefinition() == typeof(OnPlatform<>))
-			{
-				// If we're accessing OnPlatform via a StaticResource in compiled XAML 
-				// we'll have to handle the cast to the target type manually 
-				// (Normally the compiled XAML handles this by calling `implicit` explicitly,
-				// but it doesn't know to do that when it's using a static resource)
-				var method = actualType.GetRuntimeMethod("op_Implicit", new[] { actualType });
-				resource = method.Invoke(resource, new[] { resource });
-			}
-
+			object resource;
+			if (Application.Current == null || Application.Current.Resources == null || !Application.Current.Resources.TryGetValue(Key, out resource))
+				throw new XamlParseException($"StaticResource not found for key {Key}", xmlLineInfo);
 			return resource;
 		}
 	}
